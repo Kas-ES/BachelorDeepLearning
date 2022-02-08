@@ -21,6 +21,9 @@ import tensorflow as tf
 import matplotlib.pyplot as plt
 from keras_preprocessing.image import ImageDataGenerator
 
+import Models
+
+Models.ressUnet()
 print(device_lib.list_local_devices())
 physical_devices = tf.config.list_physical_devices("GPU")
 
@@ -47,9 +50,6 @@ print(df_val.shape)
 print(df_train)
 
 print(df_train.iloc[1000]["filename"])
-print(df_train.iloc[1000]["mask"])
-
-
 
 inputs_size = input_size = (IMG_HEIGHT, IMG_WIDTH, IMG_CHANNELS)
 
@@ -116,10 +116,8 @@ def dice_coef(y_true, y_pred):
     union = K.sum(y_true) + K.sum(y_pred)
     return (2.0 * intersection + smooth) / (union + smooth)
 
-
 def dice_coef_loss(y_true, y_pred):
     return 1 - dice_coef(y_true, y_pred)
-
 
 def bce_dice_loss(y_true, y_pred):
     bce = tf.keras.losses.BinaryCrossentropy()
@@ -132,35 +130,37 @@ def iou(y_true, y_pred):
     jac = (intersection + smooth) / (sum_ - intersection + smooth)
     return jac
 
-# epochs = 50
-# batchSIZE = 8
-# batchArray = [24, 12, 8]
-# learning_rate = 1e-4
-#
-# train_generator_args = dict(rotation_range=0.2,
-#                             width_shift_range=0.05,
-#                             height_shift_range=0.05,
-#                             shear_range=0.05,
-#                             zoom_range=0.05,
-#                             horizontal_flip=True,
-#                             fill_mode='nearest')
-#
-# decay_rate = learning_rate / epochs
-# opt = keras.optimizers.Adam(learning_rate=learning_rate, beta_1=0.9, beta_2=0.999, epsilon=None, decay=decay_rate,
-#                             amsgrad=False)
-#
-# train_gen = train_generator(df_train, batchSIZE, train_generator_args,
-#                             target_size=(IMG_HEIGHT, IMG_WIDTH))
-#
-# valid_generator = train_generator(df_val, batchSIZE,
-#                                   dict(),
-#                                   target_size=(IMG_HEIGHT, IMG_WIDTH))
-#
-# model.compile(loss=bce_dice_loss, optimizer=opt,
-#               metrics=['binary_accuracy', dice_coef, iou])
-#
-# history = model.fit(train_gen,
-#                     steps_per_epoch=len(df_train) / batchSIZE,
-#                     epochs=epochs,
-#                     validation_data=valid_generator,
-#                     validation_steps=len(df_val) / batchSIZE, verbose=2)
+epochs = 10
+batchSIZE = 5
+learning_rate = 1e-4
+
+train_generator_args = dict(rotation_range=0.2,
+                            width_shift_range=0.05,
+                            height_shift_range=0.05,
+                            shear_range=0.05,
+                            zoom_range=0.05,
+                            horizontal_flip=True,
+                            fill_mode='nearest')
+
+decay_rate = learning_rate / epochs
+opt = keras.optimizers.Adam(learning_rate=learning_rate, beta_1=0.9, beta_2=0.999, epsilon=None, decay=decay_rate,
+                            amsgrad=False)
+
+train_gen = train_generator(df_train, batchSIZE, train_generator_args,
+                            target_size=(IMG_HEIGHT, IMG_WIDTH))
+
+valid_generator = train_generator(df_val, batchSIZE,
+                                  dict(),
+                                  target_size=(IMG_HEIGHT, IMG_WIDTH))
+
+model = Models.ressUnet()
+model.summary()
+
+model.compile(loss=bce_dice_loss, optimizer=opt,
+              metrics=['binary_accuracy', dice_coef, iou])
+
+history = model.fit(train_gen,
+                    steps_per_epoch=len(df_train) / batchSIZE,
+                    epochs=epochs,
+                    validation_data=valid_generator,
+                    validation_steps=len(df_val) / batchSIZE, verbose=2)

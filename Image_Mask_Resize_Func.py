@@ -51,23 +51,23 @@ def Img_Data_Ext(mask, Mask_List, IMG_HEIGHT, IMG_WIDTH, IMG_CHANNELS,
 images, masks = Img_Data_Ext(mask, Mask_List, IMG_HEIGHT, IMG_WIDTH, IMG_CHANNELS,
                               Mask_Path, Img_Path, 'jpg', 'jpg')
 
-b = 0
-for img in masks:
-    imsave('Dataset_CCE/NoPolyMaskResized/'+"NoPolyp"+str(b)+"_mask"+".png", img)
-    b += 1
+# b = 0
+# for img in masks:
+#     imsave('Dataset_CCE/NoPolyMaskResized/'+"NoPolyp"+str(b)+"_mask"+".png", img)
+#     b += 1
 
 
 
 
-# path = "Dataset_CCE/Masks_Test"
-# modifiedPath = "Dataset_CCE/Modified_Masks_Test"
+# path = "Dataset_CCE/Inputs_Train"
+# modifiedPath = "Dataset_CCE/Modified_inputs_Train"
 # #Sorted is a awful method that is not guranteed to work, use natsorted instead
 # files = natsorted(os.listdir(path))
 # files = natsorted(files)
 #
 # a = 1
 # for index, filename in enumerate(files):
-#     os.rename(os.path.join(path, filename), os.path.join(modifiedPath, 'te'+'_mask'.join([str(index+1), '.png'])))
+#     os.rename(os.path.join(path, filename), os.path.join(modifiedPath, 'tr'+str(index+1)+'.png'))
 #     a += 1
-#
+
 
