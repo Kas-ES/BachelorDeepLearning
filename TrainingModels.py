@@ -49,8 +49,6 @@ print(df_val.shape)
 
 print(df_train)
 
-print(df_train.iloc[1000]["filename"])
-
 inputs_size = input_size = (IMG_HEIGHT, IMG_WIDTH, IMG_CHANNELS)
 
 # From: https://github.com/zhixuhao/unet/blob/master/data.py
