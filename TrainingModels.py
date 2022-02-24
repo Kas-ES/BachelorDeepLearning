@@ -1,49 +1,60 @@
 import os
-from glob import glob
+
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
-from keras.callbacks import ModelCheckpoint
-
-import pandas as pd
-from sklearn.model_selection import train_test_split
-
-from tensorflow.python.client import device_lib
-
+os.environ['CUDA_VISIBLE_DEVICES'] = '0'
+os.environ["SM_FRAMEWORK"] = "tf.keras"
 from tensorflow import keras
+from keras.callbacks import ModelCheckpoint
+from tensorflow.python.client import device_lib
 from tensorflow.keras import backend as K
 import tensorflow as tf
-import matplotlib.pyplot as plt
 from keras_preprocessing.image import ImageDataGenerator
-import Models
+import pandas as pd
+from glob import glob
+import matplotlib.pyplot as plt
 import segmentation_models as sm
 
-Models.ressUnet()
 print(device_lib.list_local_devices())
 physical_devices = tf.config.list_physical_devices("GPU")
 
-IMG_HEIGHT, IMG_WIDTH, IMG_CHANNELS = [512, 512, 3]
+IMG_HEIGHT, IMG_WIDTH, IMG_CHANNELS = [256, 256, 3]
 
-train_files = []
-mask_files = glob('Dataset_CCE/Merged/*_mask*')
+#Training
+df_train_files = []
+df_train_mask_files = glob('Dataset_CCE/SortedDataset/df_train/*_mask*')
 
-for i in mask_files:
-    train_files.append(i.replace('_mask', ''))
+for i in df_train_mask_files:
+    df_train_files.append(i.replace('_mask', ''))
 
-df = pd.DataFrame(data={"filename": train_files, 'mask': mask_files})
-df_train, df_test = train_test_split(df, test_size=0.1)
-df_train, df_val = train_test_split(df_train, test_size=0.2)
+df_train = pd.DataFrame(data={"filename": df_train_files, 'mask': df_train_mask_files})
 
-'''Sanity check'''
-print(len(train_files))
-print(len(mask_files))
+#Validaiton
+
+df_valid_files = []
+df_valid_mask_files = glob('Dataset_CCE/SortedDataset/df_valid/*_mask*')
+
+for i in df_valid_mask_files:
+    df_valid_files.append(i.replace('_mask', ''))
+
+df_val = pd.DataFrame(data={"filename": df_valid_files, 'mask': df_valid_mask_files})
+
+#Testing
+
+df_test_files = []
+df_test_mask_files = glob('Dataset_CCE/SortedDataset/df_test/*_mask*')
+
+for i in df_test_mask_files:
+    df_test_files.append(i.replace('_mask', ''))
+
+df_test = pd.DataFrame(data={"filename": df_test_files, 'mask': df_test_mask_files})
 
 print(df_train.shape)
 print(df_test.shape)
 print(df_val.shape)
 
-print(df_train)
+inputs_size = (IMG_HEIGHT, IMG_WIDTH, IMG_CHANNELS)
 
-inputs_size = input_size = (IMG_HEIGHT, IMG_WIDTH, IMG_CHANNELS)
 
 # From: https://github.com/zhixuhao/unet/blob/master/data.py
 def train_generator(data_frame, batch_size, aug_dict,
@@ -52,7 +63,7 @@ def train_generator(data_frame, batch_size, aug_dict,
                     image_save_prefix="image",
                     mask_save_prefix="mask",
                     save_to_dir=None,
-                    target_size=(IMG_CHANNELS, IMG_WIDTH),
+                    target_size=(IMG_HEIGHT, IMG_WIDTH),
                     seed=1):
     '''
     can generate image and mask at the same time use the same seed for
@@ -100,10 +111,11 @@ def adjust_data(img, mask):
 
     return (img, mask)
 
+
 def plotAcuracy_Loss(history):
     plt.plot(history.history['iou'])
     plt.plot(history.history['val_iou'])
-    plt.title('model iou')
+    plt.title('Intersection over union')
     plt.ylabel('IoU')
     plt.xlabel('epoch')
     plt.legend(['train', 'valid'], loc='upper left')
@@ -111,7 +123,7 @@ def plotAcuracy_Loss(history):
 
     plt.plot(history.history['dice_coef'])
     plt.plot(history.history['val_dice_coef'])
-    plt.title('model dice_coef')
+    plt.title('Dice coefficient')
     plt.ylabel('dice_coef')
     plt.xlabel('epoch')
     plt.legend(['train', 'valid'], loc='upper left')
@@ -120,7 +132,7 @@ def plotAcuracy_Loss(history):
     # summarize history for loss
     plt.plot(history.history['loss'])
     plt.plot(history.history['val_loss'])
-    plt.title('model loss')
+    plt.title('Dice coefficient loss')
     plt.ylabel('loss')
     plt.xlabel('epoch')
     plt.legend(['train', 'valid'], loc='upper left')
@@ -129,6 +141,7 @@ def plotAcuracy_Loss(history):
 
 smooth = 1.
 
+
 def dice_coef(y_true, y_pred):
     y_true = K.flatten(y_true)
     y_pred = K.flatten(y_pred)
@@ -136,8 +149,10 @@ def dice_coef(y_true, y_pred):
     union = K.sum(y_true) + K.sum(y_pred)
     return (2.0 * intersection + smooth) / (union + smooth)
 
+
 def dice_coef_loss(y_true, y_pred):
     return 1 - dice_coef(y_true, y_pred)
+
 
 def bce_dice_loss(y_true, y_pred):
     bce = tf.keras.losses.BinaryCrossentropy()
@@ -150,22 +165,37 @@ def iou(y_true, y_pred):
     jac = (intersection + smooth) / (sum_ - intersection + smooth)
     return jac
 
+
 '''Training Configuration'''
-epochs = 50
-batchSIZE = 2
+epochs = 150
+batchSIZE = 8
 learning_rate = 1e-4
 
-train_generator_args = dict(rotation_range=0.2,
-                            width_shift_range=0.05,
-                            height_shift_range=0.05,
-                            shear_range=0.05,
+# Change shift range from 0.05 to 0.15
+# Change shear and zoom range from 0.05 to 0.15
+# train_generator_args = dict(rotation_range=0.25,
+#                             width_shift_range=0.15,
+#                             height_shift_range=0.15,
+#                             shear_range=45,
+#                             channel_shift_range=150.0,
+#                             zoom_range=[0.5, 1.5],
+#                             horizontal_flip=True,
+#                             brightness_range=(0.1, 0.9),
+#                             fill_mode="nearest")
+
+train_generator_args = dict(rotation_range=0.1,
+                            width_shift_range=0.09,
+                            height_shift_range=0.09,
+                            shear_range=0.09,
+                            #channel_shift_range=50.0,
                             zoom_range=0.05,
                             horizontal_flip=True,
-                            fill_mode='nearest')
+                            #brightness_range=(0.3, 0.9),
+                            fill_mode="nearest")
 
 decay_rate = learning_rate / epochs
-opt = keras.optimizers.Adam(learning_rate=learning_rate, beta_1=0.9, beta_2=0.999, epsilon=None, decay=decay_rate,
-                            amsgrad=False)
+#opt = keras.optimizers.Adam(learning_rate=learning_rate, beta_1=0.9, beta_2=0.999, decay=decay_rate,
+#                            amsgrad=False)
 
 train_gen = train_generator(df_train, batchSIZE, train_generator_args,
                             target_size=(IMG_HEIGHT, IMG_WIDTH))
@@ -173,35 +203,75 @@ train_gen = train_generator(df_train, batchSIZE, train_generator_args,
 valid_generator = train_generator(df_val, batchSIZE,
                                   dict(),
                                   target_size=(IMG_HEIGHT, IMG_WIDTH))
+test_gen = train_generator(df_test, batchSIZE,
+                                  dict(),
+                                  target_size=(IMG_HEIGHT, IMG_WIDTH))
+
+
+callbackEarlyStopping = keras.callbacks.EarlyStopping(monitor='val_loss', patience=20)
+# callbackReduceROnPlateau = keras.callbacks.ReduceLROnPlateau(monitor='val_loss', factor=0.1, patience=6)
+
+def trainingConfiguration (model, callbackModelCheckPoint):
+    if model == modelvgg19 or model == modelinceptionresnetv2:
+        opt = keras.optimizers.Adam(learning_rate=learning_rate, beta_1=0.9, beta_2=0.999, epsilon=1 ,decay=decay_rate,
+                                    amsgrad=False)
+    else:
+        opt = keras.optimizers.Adam(learning_rate=learning_rate, beta_1=0.9, beta_2=0.999, decay=decay_rate,
+                                    amsgrad=False)
+
+    model.compile(loss=bce_dice_loss, optimizer=opt,
+                  metrics=['binary_accuracy', dice_coef, iou])
+
+    history = model.fit(train_gen,
+                        steps_per_epoch=len(df_train) / batchSIZE,
+                        epochs=epochs,
+                        validation_data=valid_generator,
+                        validation_steps=len(df_val) / batchSIZE, verbose=2,
+                        callbacks=[callbackModelCheckPoint, callbackEarlyStopping])
+
+    plotAcuracy_Loss(history)
 
 '''Models'''
+###VGG19###
 ## model = Models.build_vgg19_unet()
-# model = sm.Unet('vgg19', classes=1, activation='sigmoid', encoder_weights='imagenet', encoder_freeze=True)
-# callbacks = [ModelCheckpoint('VGGU19net_POLYP.hdf5', verbose=2, save_best_only=True)]
+modelvgg19 = sm.Unet('vgg19', classes=1, activation='sigmoid', encoder_weights='imagenet', encoder_freeze=False,input_shape=inputs_size)
+callbackModelCheckPointvgg19 = [ModelCheckpoint('VGGU19net_POLYP.hdf5', verbose=2, save_best_only=True)]
 
-model = sm.Unet('resnext50', classes=1, activation='sigmoid', encoder_weights='imagenet', encoder_freeze=True)
-callbacks = [ModelCheckpoint('ResNextUnet_POLYP.hdf5', verbose=2, save_best_only=True)]
+###ResNeXt###
+modelresnext50 = sm.Unet('resnext50', classes=1, activation='sigmoid', encoder_weights='imagenet', encoder_freeze=False, input_shape=inputs_size)
+callbackModelCheckPointresnext50 = [ModelCheckpoint('ResNextUnet_POLYP.hdf5', verbose=2, save_best_only=True)]
 
-# model = sm.Unet('resnet50', classes=1, activation='sigmoid', encoder_weights='imagenet', encoder_freeze=True)
-# callbacks = [ModelCheckpoint('ResUnet_POLYP.hdf5', verbose=2, save_best_only=True)]
+###ResNet###
+modelresnet50 = sm.Unet('resnet50', activation='sigmoid', classes=1, encoder_weights='imagenet', encoder_freeze=False, input_shape=inputs_size)
+callbackModelCheckPointresnet50 = [ModelCheckpoint('ResUnet_POLYP.hdf5', verbose=2, save_best_only=True)]
 
-# model = sm.Unet('inceptionv3', classes=1, activation='sigmoid', encoder_weights='imagenet', encoder_freeze=True)
-# callbacks = [ModelCheckpoint('Inceptionv3_POLYP.hdf5', verbose=2, save_best_only=True)]
+###Inceptionv3###
+modelinceptionv3 = sm.Unet('inceptionv3', classes=1, activation='sigmoid', encoder_weights='imagenet', encoder_freeze=False, input_shape=inputs_size)
+callbackModelCheckPointinceptionv3 = [ModelCheckpoint('Inceptionv3_POLYP.hdf5', verbose=2, save_best_only=True)]
 
-#model = sm.Unet('inceptionresnetv2', classes=1, activation='sigmoid', encoder_weights='imagenet', encoder_freeze=True)
-#callbacks = [ModelCheckpoint('inceptionresnetv2_POLYP.hdf5', verbose=2, save_best_only=True)]
+###InceptionResNetv2###
+modelinceptionresnetv2 = sm.Unet('inceptionresnetv2', classes=1, activation='sigmoid', encoder_weights='imagenet', encoder_freeze=False, input_shape=inputs_size)
+callbackModelCheckPointinceptionresnetv2 = [ModelCheckpoint('inceptionresnetv2_POLYP.hdf5', verbose=2, save_best_only=True)]
 
-model.summary()
+#model.summary()
 
 '''Model compile and training'''
-model.compile(loss=bce_dice_loss, optimizer=opt,
-              metrics=['binary_accuracy', dice_coef, iou, keras.metrics.AUC()])
+# model.compile(loss=bce_dice_loss, optimizer=opt,
+#               metrics=['binary_accuracy', dice_coef, iou])
+#
+# history = model.fit(train_gen,
+#                     steps_per_epoch=len(df_train) / batchSIZE,
+#                     epochs=epochs,
+#                     validation_data=valid_generator,
+#                     validation_steps=len(df_val) / batchSIZE, verbose=2,
+#                     callbacks=[callbackModelCheckPoint, callbackEarlyStopping])
 
-history = model.fit(train_gen,
-                    steps_per_epoch=len(df_train) / batchSIZE,
-                    epochs=epochs,
-                    validation_data=valid_generator,
-                    validation_steps=len(df_val) / batchSIZE, verbose=2,
-                    callbacks=callbacks)
-
-plotAcuracy_Loss(history)
+trainingConfiguration(modelvgg19, callbackModelCheckPointvgg19)
+K.clear_session()
+trainingConfiguration(modelresnext50, callbackModelCheckPointresnext50)
+K.clear_session()
+trainingConfiguration(modelresnet50, callbackModelCheckPointresnet50)
+K.clear_session()
+trainingConfiguration(modelinceptionv3, callbackModelCheckPointinceptionv3)
+K.clear_session()
+trainingConfiguration(modelinceptionresnetv2, callbackModelCheckPointinceptionresnetv2)
