@@ -1,6 +1,8 @@
 import os
 from glob import glob
 
+from natsort import natsorted
+
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 os.environ['CUDA_VISIBLE_DEVICES'] = '0'
 os.environ["SM_FRAMEWORK"] = "tf.keras"
@@ -16,6 +18,9 @@ from tensorflow.keras import backend as K
 import matplotlib.pyplot as plt
 from keras_preprocessing.image import ImageDataGenerator
 from sklearn.metrics import classification_report, confusion_matrix
+from skimage.io import imread, imsave
+from skimage.transform import resize
+
 
 print(device_lib.list_local_devices())
 physical_devices = tf.config.list_physical_devices("GPU")
@@ -25,58 +30,106 @@ IMG_HEIGHT, IMG_WIDTH, IMG_CHANNELS = [256, 256, 3]
 
 # Testing
 df_test_files = []
-df_test_mask_files = glob('Dataset_CCE/SortedDataset/df_test/*_mask*')
+df_test_labels = []
+df_test_mask_files = natsorted(glob('Dataset_CCE/SortedDataset/df_test/*_mask*'))
 
 for i in df_test_mask_files:
     df_test_files.append(i.replace('_mask', ''))
 
-df_test = pd.DataFrame(data={"filename": df_test_files, 'mask': df_test_mask_files})
+index = 0
+nopolyp = 'Dataset_CCE/SortedDataset/df_test\\NoPolyp'
+_mask = '_mask'
+_png = '.png'
+comparator = nopolyp+str(index)+_mask+_png
+for i in df_test_mask_files:
+    comparator = nopolyp + str(index) + _mask + _png
+    if i == comparator or i == nopolyp+str(nopolyp)+_png:
+        df_test_labels.append("No Polyp")
+    else:
+        df_test_labels.append("Polyp")
+    index += 1
 
+df_test = pd.DataFrame(data={"filename": df_test_files, 'mask': df_test_mask_files, 'label': df_test_labels}, index=[df_test_labels])
 
+print(df_test.describe())
+print(df_test.head())
+print(df_test.tail())
 print(df_test.shape)
 
 inputs_size = (IMG_HEIGHT, IMG_WIDTH, IMG_CHANNELS)
 
+ground_truth = np.array([])
+
+for i in range(321):
+  mask = cv2.imread(df_test['mask'].iloc[i])
+  mask = cv2.cvtColor(mask, cv2.COLOR_BGR2GRAY)
+  mask = cv2.resize(mask, (IMG_HEIGHT, IMG_WIDTH))
+  mask = mask / 255
+  mask[mask > 0.5] = 1
+  mask[mask <= 0.5] = 0
+  if ground_truth.size == 0:
+    ground_truth = np.array([mask])
+  else:
+      ground_truth = np.append(ground_truth, np.array([mask]), axis=0)
+
+
+#print("GROUND TRUTH SIZE:::", ground_truth.size)
+#print("GROUND TRUTH::::",ground_truth.shape)
+#ground_truth = np.argmax(ground_truth, axis=2)
+#print("ARGMAX::::", ground_truth.shape)
+#ground_truth = np.reshape(ground_truth, (321,256, 1))
+#print("ARGMAX::::", ground_truth.shape)
+
+ground_truth = np.ndarray.flatten(ground_truth)
+print(ground_truth.round(2))
+
+ground_truth = np.where(ground_truth > 0.5, 1, 0)
+
+####
+aug_dict = None
+
+image_datagen = ImageDataGenerator()
+mask_datagen = ImageDataGenerator()
+
+
+image_generator = image_datagen.flow_from_dataframe(
+    df_test,
+    x_col="filename",
+    y_col='label',
+    classes=['No Polyp', 'Polyp'],
+    class_mode='binary',
+    color_mode='rgb',
+    target_size=(IMG_HEIGHT,IMG_WIDTH),
+    batch_size=1,
+    save_to_dir=None,
+    save_prefix='"image"',
+    shuffle=False,
+    seed=1)
+
+mask_generator = mask_datagen.flow_from_dataframe(
+    df_test,
+    x_col="mask",
+    y_col='label',
+    classes=['No Polyp', 'Polyp'],
+    class_mode='binary',
+    color_mode='grayscale',
+    target_size=(IMG_HEIGHT,IMG_WIDTH),
+    batch_size=1,
+    save_to_dir=None,
+    save_prefix='mask',
+    shuffle=False,
+    seed=1)
 
 # 512 -- 256
-def train_generator(data_frame, batch_size, aug_dict,
-                    image_color_mode="rgb",
-                    mask_color_mode="grayscale",
-                    image_save_prefix="image",
-                    mask_save_prefix="mask",
-                    save_to_dir=None,
-                    target_size=(IMG_HEIGHT, IMG_WIDTH),
-                    seed=1):
+def train_generator(image_generator, mask_generator):
     '''
     can generate image and mask at the same time use the same seed for
     image_datagen and mask_datagen to ensure the transformation for image
     and mask is the same if you want to visualize the results of generator,
     set save_to_dir = "your path"
     '''
-    image_datagen = ImageDataGenerator(**aug_dict)
-    mask_datagen = ImageDataGenerator(**aug_dict)
-
-    image_generator = image_datagen.flow_from_dataframe(
-        data_frame,
-        x_col="filename",
-        class_mode=None,
-        color_mode=image_color_mode,
-        target_size=target_size,
-        batch_size=batch_size,
-        save_to_dir=save_to_dir,
-        save_prefix=image_save_prefix,
-        seed=seed)
-
-    mask_generator = mask_datagen.flow_from_dataframe(
-        data_frame,
-        x_col="mask",
-        class_mode=None,
-        color_mode=mask_color_mode,
-        target_size=target_size,
-        batch_size=batch_size,
-        save_to_dir=save_to_dir,
-        save_prefix=mask_save_prefix,
-        seed=seed)
+    #image_datagen = ImageDataGenerator(**aug_dict)
+    #mask_datagen = ImageDataGenerator(**aug_dict)
 
     train_gen = zip(image_generator, mask_generator)
 
@@ -86,6 +139,9 @@ def train_generator(data_frame, batch_size, aug_dict,
 
 
 def adjust_data(img, mask):
+    img = img[0]
+    mask = mask[0]
+
     img = img / 255
     mask = mask / 255
     mask[mask > 0.5] = 1
@@ -116,7 +172,6 @@ def imageVis(model):
         plt.title('Prediction')
         plt.show()
 
-
 smooth = 1
 
 
@@ -143,43 +198,44 @@ def iou(y_true, y_pred):
     jac = (intersection + smooth) / (sum_ - intersection + smooth)
     return jac
 
-
 batchSIZE = 1
 learning_rate = 1e-4
 epochs = 100
 
 decay_rate = learning_rate/epochs
-test_gen = train_generator(df_test, batchSIZE,
-                           dict(),
-                           target_size=(IMG_HEIGHT, IMG_WIDTH))
+test_gen = train_generator(image_generator, mask_generator)
 
 
 
-modelVGG = keras.models.load_model('VGGU19net_POLYP.hdf5', custom_objects={'bce_dice_loss': bce_dice_loss, 'iou': iou, 'dice_coef': dice_coef})
+modelincresnet = keras.models.load_model('inceptionresnetv2_POLYP.hdf5', custom_objects={'bce_dice_loss': bce_dice_loss, 'iou': iou, 'dice_coef': dice_coef})
 
 #modelRES = keras.models.load_model('ResUnet_POLYP.hdf5', custom_objects={'bce_dice_loss': bce_dice_loss, 'iou': iou, 'dice_coef': dice_coef})
 
 #modelINC = keras.models.load_model('Inceptionv3_POLYP.hdf5',
                       #custom_objects={'bce_dice_loss': bce_dice_loss, 'iou': iou, 'dice_coef': dice_coef})
 
-opt = keras.optimizers.Adam(learning_rate=learning_rate, beta_1=0.9, beta_2=0.999, epsilon=1,
-                                amsgrad=False)
 
-modelVGG.compile(loss=bce_dice_loss, optimizer=opt,
-              metrics=['binary_accuracy', dice_coef, iou])
+Y_pred = modelincresnet.predict(test_gen, steps=321 ,verbose=1)
 
-#modelVGG.evaluate(test_gen, verbose=1, batch_size=8)
+wtf = mask_generator.classes
 
-Y_pred = modelVGG.predict(test_gen, verbose=1)
+print("WWWWW::::",wtf)
 
-#for i in range(321):
+print('Y_pred:::',Y_pred.shape)
 
+Y_pred = np.ndarray.flatten(Y_pred)
+print(Y_pred.round(2))
 
+y_pred = np.where(Y_pred >0.5, 1, 0)
+#
+# y_pred = np.argmax(Y_pred, axis=2)
+# y_predArray = np.argmax(y_pred, axis=2)
+# y_predArray = np.argmax(y_predArray, axis=1)
+# y_predList = list(y_predArray)
+# #print('y_pred::::', y_pred)
 
-
-y_pred = np.argmax(Y_pred, axis=1)
-print("CONFUSION MATRIX")
-print(confusion_matrix(test_gen.classes, y_pred))
-print('Classification Report')
 target_names = ['No Polyp', 'Polyp']
-print(classification_report(test_gen.classes, y_pred, target_names=target_names))
+print("CONFUSION MATRIX")
+print(confusion_matrix(ground_truth , y_pred))
+print('Classification Report')
+print(classification_report(ground_truth, y_pred, target_names=target_names))

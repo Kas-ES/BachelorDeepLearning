@@ -22,36 +22,66 @@ IMG_HEIGHT, IMG_WIDTH, IMG_CHANNELS = [256, 256, 3]
 
 #Training
 df_train_files = []
+df_train_labels = []
 df_train_mask_files = glob('Dataset_CCE/SortedDataset/df_train/*_mask*')
 
 for i in df_train_mask_files:
     df_train_files.append(i.replace('_mask', ''))
 
-df_train = pd.DataFrame(data={"filename": df_train_files, 'mask': df_train_mask_files})
+index = 684
+nopolyp = 'Dataset_CCE/SortedDataset/df_train\\NoPolyp'
+_mask = '_mask'
+_png = '.png'
+comparator = nopolyp+str(index)+_mask+_png
+for i in df_train_mask_files:
+    comparator = nopolyp + str(index) + _mask + _png
+    if i == comparator or i == nopolyp+str(nopolyp)+_png:
+        df_train_labels.append("No Polyp")
+    else:
+        df_train_labels.append("Polyp")
+    index += 1
+
+
+
+df_train = pd.DataFrame(data={"filename": df_train_files, 'mask': df_train_mask_files, 'label': df_train_labels})
+
+
 
 #Validaiton
 
 df_valid_files = []
+df_valid_labels = []
 df_valid_mask_files = glob('Dataset_CCE/SortedDataset/df_valid/*_mask*')
 
 for i in df_valid_mask_files:
     df_valid_files.append(i.replace('_mask', ''))
 
-df_val = pd.DataFrame(data={"filename": df_valid_files, 'mask': df_valid_mask_files})
+index = 228
+nopolyp = 'Dataset_CCE/SortedDataset/df_valid\\NoPolyp'
+_mask = '_mask'
+_png = '.png'
+comparator = nopolyp+str(index)+_mask+_png
+for i in df_valid_mask_files:
+    comparator = nopolyp + str(index) + _mask + _png
+    if i == comparator or i == nopolyp+str(nopolyp)+_png:
+        df_valid_labels.append("No Polyp")
+    else:
+        df_valid_labels.append("Polyp")
+    index += 1
 
-#Testing
 
-df_test_files = []
-df_test_mask_files = glob('Dataset_CCE/SortedDataset/df_test/*_mask*')
+df_val = pd.DataFrame(data={"filename": df_valid_files, 'mask': df_valid_mask_files, 'label': df_valid_labels})
 
-for i in df_test_mask_files:
-    df_test_files.append(i.replace('_mask', ''))
 
-df_test = pd.DataFrame(data={"filename": df_test_files, 'mask': df_test_mask_files})
 
 print(df_train.shape)
-print(df_test.shape)
+print(df_train.head())
+print(df_train.tail())
 print(df_val.shape)
+print(df_val.head())
+print(df_val.tail())
+
+
 
 inputs_size = (IMG_HEIGHT, IMG_WIDTH, IMG_CHANNELS)
 
@@ -62,6 +92,7 @@ def train_generator(data_frame, batch_size, aug_dict,
                     mask_color_mode="grayscale",
                     image_save_prefix="image",
                     mask_save_prefix="mask",
+                    class_mode='binary',
                     save_to_dir=None,
                     target_size=(IMG_HEIGHT, IMG_WIDTH),
                     seed=1):
@@ -77,7 +108,9 @@ def train_generator(data_frame, batch_size, aug_dict,
     image_generator = image_datagen.flow_from_dataframe(
         data_frame,
         x_col="filename",
-        class_mode=None,
+        y_col="label",
+        classes=['No Polyp', 'Polyp'],
+        class_mode=class_mode,
         color_mode=image_color_mode,
         target_size=target_size,
         batch_size=batch_size,
@@ -88,7 +121,9 @@ def train_generator(data_frame, batch_size, aug_dict,
     mask_generator = mask_datagen.flow_from_dataframe(
         data_frame,
         x_col="mask",
-        class_mode=None,
+        y_col="label",
+        classes=['No Polyp', 'Polyp'],
+        class_mode=class_mode,
         color_mode=mask_color_mode,
         target_size=target_size,
         batch_size=batch_size,
@@ -104,6 +139,9 @@ def train_generator(data_frame, batch_size, aug_dict,
 
 
 def adjust_data(img, mask):
+    img = img[0]
+    mask = mask[0]
+
     img = img / 255
     mask = mask / 255
     mask[mask > 0.5] = 1
@@ -168,7 +206,7 @@ def iou(y_true, y_pred):
 
 '''Training Configuration'''
 epochs = 150
-batchSIZE = 8
+batchSIZE = 6
 learning_rate = 1e-4
 
 # Change shift range from 0.05 to 0.15
@@ -203,21 +241,14 @@ train_gen = train_generator(df_train, batchSIZE, train_generator_args,
 valid_generator = train_generator(df_val, batchSIZE,
                                   dict(),
                                   target_size=(IMG_HEIGHT, IMG_WIDTH))
-test_gen = train_generator(df_test, batchSIZE,
-                                  dict(),
-                                  target_size=(IMG_HEIGHT, IMG_WIDTH))
 
 
 callbackEarlyStopping = keras.callbacks.EarlyStopping(monitor='val_loss', patience=20)
 # callbackReduceROnPlateau = keras.callbacks.ReduceLROnPlateau(monitor='val_loss', factor=0.1, patience=6)
 
 def trainingConfiguration (model, callbackModelCheckPoint):
-    if model == modelvgg19 or model == modelinceptionresnetv2:
-        opt = keras.optimizers.Adam(learning_rate=learning_rate, beta_1=0.9, beta_2=0.999, epsilon=1 ,decay=decay_rate,
-                                    amsgrad=False)
-    else:
-        opt = keras.optimizers.Adam(learning_rate=learning_rate, beta_1=0.9, beta_2=0.999, decay=decay_rate,
-                                    amsgrad=False)
+    opt = keras.optimizers.Adam(learning_rate=learning_rate, beta_1=0.9, beta_2=0.999, epsilon=None, decay=decay_rate,
+                                amsgrad=False)
 
     model.compile(loss=bce_dice_loss, optimizer=opt,
                   metrics=['binary_accuracy', dice_coef, iou])
@@ -266,12 +297,8 @@ callbackModelCheckPointinceptionresnetv2 = [ModelCheckpoint('inceptionresnetv2_P
 #                     validation_steps=len(df_val) / batchSIZE, verbose=2,
 #                     callbacks=[callbackModelCheckPoint, callbackEarlyStopping])
 
-trainingConfiguration(modelvgg19, callbackModelCheckPointvgg19)
-K.clear_session()
-trainingConfiguration(modelresnext50, callbackModelCheckPointresnext50)
-K.clear_session()
-trainingConfiguration(modelresnet50, callbackModelCheckPointresnet50)
-K.clear_session()
-trainingConfiguration(modelinceptionv3, callbackModelCheckPointinceptionv3)
-K.clear_session()
+#trainingConfiguration(modelvgg19, callbackModelCheckPointvgg19)
+#trainingConfiguration(modelresnext50, callbackModelCheckPointresnext50)
+#trainingConfiguration(modelresnet50, callbackModelCheckPointresnet50)
+#trainingConfiguration(modelinceptionv3, callbackModelCheckPointinceptionv3)
 trainingConfiguration(modelinceptionresnetv2, callbackModelCheckPointinceptionresnetv2)
