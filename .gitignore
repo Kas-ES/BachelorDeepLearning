@@ -129,3 +129,7 @@ dmypy.json
 .pyre/
 /Dataset_CCE/
 /Dataset_CCE.zip
+/100NoPolyp/
+/10NoPolyp/
+/2NoPolyp/
+/Results.docx

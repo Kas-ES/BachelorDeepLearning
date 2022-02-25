@@ -1,26 +1,16 @@
+# -*- coding: utf-8 -*-
+"""
+Created on Wed Feb  9 08:59:56 2022
 
-from keras.layers import Add, Concatenate, MaxPool2D, Dropout
-
-import pandas as pd
-from sklearn.model_selection import train_test_split
-
-from tensorflow.python.client import device_lib
-from tensorflow.python.keras import Input
-from tensorflow.python.keras.layers import Conv2D, Conv2DTranspose, UpSampling2D, Activation, BatchNormalization
-from tensorflow.python.keras.models import Model
-
-from keras.models import Model
+@author: asta
+"""
+import numpy as np
+from keras import Model, Input
+from keras.layers import Conv2D, Activation, Add, UpSampling2D, MaxPool2D, Dropout, Conv2DTranspose, Concatenate, \
+    Lambda, MaxPooling2D, concatenate, BatchNormalization
 from tensorflow import keras
-from tensorflow.python.keras.applications.densenet import layers
-from tensorflow.keras import backend as K
-import tensorflow as tf
-import matplotlib.pyplot as plt
-from keras_preprocessing.image import ImageDataGenerator
 
-import Models
-
-
-IMG_HEIGHT, IMG_WIDTH, IMG_CHANNELS = [512, 512, 3]
+IMG_HEIGHT, IMG_WIDTH, IMG_CHANNELS = [256, 256, 3]
 inputs_size = input_size = (IMG_HEIGHT, IMG_WIDTH, IMG_CHANNELS)
 
 ##ResUnet
@@ -158,3 +148,87 @@ def build_vgg19_unet():
 
     model = Model(inputs, outputs, name="VGG19_U-Net")
     return model
+
+
+## EU-Net
+# KK = 4  # THE NUMBER OF CONTRACTING/EXPANSIVE STAGES IN PROPOSED EW-Net
+# dd = 3
+# NN = 5
+# Optimizer = 'adam'
+# Final_Act = 'sigmoid'#'tanh'# 'sigmoid'
+
+def Con_Exp_Path(X, Y, n):
+    L = Conv2D(2 ** X, (3, 3), kernel_initializer='he_normal',  # 'glorot_uniform', 'he_normal'
+                padding='same')(n)
+    L = BatchNormalization()(L)
+    L = Activation('relu')(L)
+    L = Conv2D(2 ** X, (3, 3), kernel_initializer='he_normal',  # 'glorot_uniform', 'he_normal'
+                padding='same')(n)
+    L = BatchNormalization()(L)
+    L = Activation('relu')(L)
+    L = Dropout(Y)(L)
+    L = Conv2D(2 ** X, (3, 3), activation='relu', kernel_initializer='he_normal',  # 'glorot_uniform', 'he_normal'
+                padding='same')(L)
+    return L
+
+def EU_Net_Segmentation(NN, KK, dd, Final_Act):
+    NL = 9 + (KK + dd - 1) * 5  # No. of layers for EU-Net architecture
+    MD = [None] * (NL)  # EU_Net Layers combination
+
+    MD[0] = Input(input_size)
+    MD[1] = Lambda(lambda x: x)(MD[0])
+
+    # MD[1] = Conv2D(NN, (1,1), padding='valid')(MD[1])
+    for tt in np.arange(0, KK):
+        MD[2 * (tt + 1)] = Con_Exp_Path(NN + tt, 0.1 * (1 + np.fix(tt / 2)), MD[2 * (tt) + 1])
+        MD[2 * (tt + 1) + 1] = MaxPooling2D((2, 2))(MD[2 * (tt + 1)])
+
+    gg = 2 * (KK + 1)  # e.g. for KK=3 & dd=1==>gg=8 or for KK=2 & dd=2==>gg=6
+    MD[gg] = Con_Exp_Path(NN + KK, 0.1 * (1 + np.fix((tt + 1) / 2)), MD[gg - 1])
+
+    for tt in np.arange(dd - 1, -1, -1):
+        MD[gg + 3 * (dd - tt - 1) + 1] = Conv2DTranspose(2 ** (NN + KK - (dd - tt)), \
+                                                          (2, 2), strides=(2, 2), \
+                                                          padding='same')(MD[gg + 3 * (dd - tt - 1)])
+        MD[gg + 3 * (dd - tt - 1) + 2] = concatenate([MD[gg + 3 * (dd - tt - 1) + 1], MD[gg - 2 * (dd - tt)]])
+        MD[gg + 3 * (dd - tt - 1) + 3] = Con_Exp_Path(NN + KK - (dd - tt), 0.1 * (1 + np.fix((KK - dd + tt) / 2)), \
+                                                      MD[gg + 3 * (dd - tt - 1) + 2])
+
+    gg += 3 * dd  # e.g. for KK=3 & dd=1 ==> gg=11 or for KK=2 & dd=2==>gg=12
+
+    for tt in np.arange(0, dd):
+        MD[gg + 2 * tt + 1] = MaxPooling2D((2, 2))(MD[gg + 2 * tt])
+        MD[gg + 2 * tt + 2] = Con_Exp_Path(NN + KK + (tt + 1 - dd), 0.1 * (1 + np.fix((KK - dd + tt + 1) / 2)), \
+                                            MD[gg + 2 * tt + 1])
+
+    gg += 2 * dd  # e.g. for KK=3 & dd=1 ==> gg=13 or for KK=2 & dd=2==>gg=16
+
+    for tt in np.arange(dd - 1, -1, -1):
+        MD[gg + 3 * (dd - tt - 1) + 1] = Conv2DTranspose(2 ** (NN + KK - (dd - tt)), (2, 2), strides=(2, 2), \
+                                                          padding='same')(MD[gg + 3 * (dd - tt - 1)])
+        MD[gg + 3 * (dd - tt - 1) + 2] = concatenate([MD[gg + 3 * (dd - tt - 1) + 1], MD[gg - 2 * (dd - tt)]])
+        MD[gg + 3 * (dd - tt - 1) + 3] = Con_Exp_Path(NN + KK - (dd - tt), 0.1 * (1 + np.fix((KK - dd + tt) / 2)), \
+                                                      MD[gg + 3 * (dd - tt - 1) + 2])
+
+    gg += 3 * dd  # e.g. for KK=3 & dd=1 ==> gg=16 or for KK=2 & dd=2==>gg=22
+
+    for tt in np.arange(KK, dd, -1):
+        MD[gg + 3 * (KK - tt) + 1] = Conv2DTranspose(2 ** (NN + tt - (dd + 1)), (2, 2), strides=(2, 2), \
+                                                      padding='same')(MD[gg + 3 * (KK - tt)])
+        MD[gg + 3 * (KK - tt) + 2] = concatenate([MD[gg + 3 * (KK - tt) + 1], MD[2 * (tt - dd)]])
+        MD[gg + 3 * (KK - tt) + 3] = Con_Exp_Path(NN + tt - (dd + 1), 0.1 * (1 + np.fix((tt - dd - 1) / 2)), \
+                                                  MD[gg + 3 * (KK - tt) + 2])
+    if gg != NL - 1:
+        gg += 3 * (KK - dd)
+
+    # MD[gg+1] = Conv2D(1,(1,1), activation='sigmoid')(MD[gg])
+    MD[gg + 1] = Conv2D(1, (1, 1))(MD[gg])
+    MD[gg + 1] = Activation(Final_Act)(MD[gg + 1])
+
+    model = Model(inputs=[MD[0]], outputs=[MD[gg + 1]])
+    return model
+
+# if Final_Act == 'tanh':
+#     Pred_thresh = 0.01
+# else:
+#     Pred_thresh = 0.5
