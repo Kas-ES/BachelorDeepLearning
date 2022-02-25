@@ -1,5 +1,6 @@
 import os
 
+from natsort import natsorted
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 os.environ['CUDA_VISIBLE_DEVICES'] = '0'
@@ -20,10 +21,10 @@ physical_devices = tf.config.list_physical_devices("GPU")
 
 IMG_HEIGHT, IMG_WIDTH, IMG_CHANNELS = [256, 256, 3]
 
-#Training
+# Training
 df_train_files = []
 df_train_labels = []
-df_train_mask_files = glob('Dataset_CCE/SortedDataset/df_train/*_mask*')
+df_train_mask_files = natsorted(glob('Dataset_CCE/SortedDataset/df_train/*_mask*'))
 
 for i in df_train_mask_files:
     df_train_files.append(i.replace('_mask', ''))
@@ -32,26 +33,22 @@ index = 684
 nopolyp = 'Dataset_CCE/SortedDataset/df_train\\NoPolyp'
 _mask = '_mask'
 _png = '.png'
-comparator = nopolyp+str(index)+_mask+_png
+comparator = nopolyp + str(index) + _mask + _png
 for i in df_train_mask_files:
     comparator = nopolyp + str(index) + _mask + _png
-    if i == comparator or i == nopolyp+str(nopolyp)+_png:
+    if i == comparator or i == nopolyp + str(nopolyp) + _png:
         df_train_labels.append("No Polyp")
     else:
         df_train_labels.append("Polyp")
     index += 1
 
-
-
 df_train = pd.DataFrame(data={"filename": df_train_files, 'mask': df_train_mask_files, 'label': df_train_labels})
 
-
-
-#Validaiton
+# Validaiton
 
 df_valid_files = []
 df_valid_labels = []
-df_valid_mask_files = glob('Dataset_CCE/SortedDataset/df_valid/*_mask*')
+df_valid_mask_files = natsorted(glob('Dataset_CCE/SortedDataset/df_valid/*_mask*'))
 
 for i in df_valid_mask_files:
     df_valid_files.append(i.replace('_mask', ''))
@@ -60,19 +57,16 @@ index = 228
 nopolyp = 'Dataset_CCE/SortedDataset/df_valid\\NoPolyp'
 _mask = '_mask'
 _png = '.png'
-comparator = nopolyp+str(index)+_mask+_png
+comparator = nopolyp + str(index) + _mask + _png
 for i in df_valid_mask_files:
     comparator = nopolyp + str(index) + _mask + _png
-    if i == comparator or i == nopolyp+str(nopolyp)+_png:
+    if i == comparator or i == nopolyp + str(nopolyp) + _png:
         df_valid_labels.append("No Polyp")
     else:
         df_valid_labels.append("Polyp")
     index += 1
 
-
 df_val = pd.DataFrame(data={"filename": df_valid_files, 'mask': df_valid_mask_files, 'label': df_valid_labels})
-
-
 
 print(df_train.shape)
 print(df_train.head())
@@ -80,8 +74,6 @@ print(df_train.tail())
 print(df_val.shape)
 print(df_val.head())
 print(df_val.tail())
-
-
 
 inputs_size = (IMG_HEIGHT, IMG_WIDTH, IMG_CHANNELS)
 
@@ -209,31 +201,17 @@ epochs = 150
 batchSIZE = 6
 learning_rate = 1e-4
 
-# Change shift range from 0.05 to 0.15
-# Change shear and zoom range from 0.05 to 0.15
-# train_generator_args = dict(rotation_range=0.25,
-#                             width_shift_range=0.15,
-#                             height_shift_range=0.15,
-#                             shear_range=45,
-#                             channel_shift_range=150.0,
-#                             zoom_range=[0.5, 1.5],
-#                             horizontal_flip=True,
-#                             brightness_range=(0.1, 0.9),
-#                             fill_mode="nearest")
-
 train_generator_args = dict(rotation_range=0.1,
                             width_shift_range=0.09,
                             height_shift_range=0.09,
                             shear_range=0.09,
-                            #channel_shift_range=50.0,
+                            # channel_shift_range=50.0,
                             zoom_range=0.05,
                             horizontal_flip=True,
-                            #brightness_range=(0.3, 0.9),
+                            # brightness_range=(0.3, 0.9),
                             fill_mode="nearest")
 
 decay_rate = learning_rate / epochs
-#opt = keras.optimizers.Adam(learning_rate=learning_rate, beta_1=0.9, beta_2=0.999, decay=decay_rate,
-#                            amsgrad=False)
 
 train_gen = train_generator(df_train, batchSIZE, train_generator_args,
                             target_size=(IMG_HEIGHT, IMG_WIDTH))
@@ -242,11 +220,12 @@ valid_generator = train_generator(df_val, batchSIZE,
                                   dict(),
                                   target_size=(IMG_HEIGHT, IMG_WIDTH))
 
-
 callbackEarlyStopping = keras.callbacks.EarlyStopping(monitor='val_loss', patience=20)
+
+
 # callbackReduceROnPlateau = keras.callbacks.ReduceLROnPlateau(monitor='val_loss', factor=0.1, patience=6)
 
-def trainingConfiguration (model, callbackModelCheckPoint):
+def trainingConfiguration(model, callbackModelCheckPoint):
     opt = keras.optimizers.Adam(learning_rate=learning_rate, beta_1=0.9, beta_2=0.999, epsilon=None, decay=decay_rate,
                                 amsgrad=False)
 
@@ -262,43 +241,40 @@ def trainingConfiguration (model, callbackModelCheckPoint):
 
     plotAcuracy_Loss(history)
 
+
 '''Models'''
 ###VGG19###
 ## model = Models.build_vgg19_unet()
-modelvgg19 = sm.Unet('vgg19', classes=1, activation='sigmoid', encoder_weights='imagenet', encoder_freeze=False,input_shape=inputs_size)
+modelvgg19 = sm.Unet('vgg19', classes=1, activation='sigmoid', encoder_weights='imagenet', encoder_freeze=False,
+                     input_shape=inputs_size)
 callbackModelCheckPointvgg19 = [ModelCheckpoint('VGGU19net_POLYP.hdf5', verbose=2, save_best_only=True)]
 
 ###ResNeXt###
-modelresnext50 = sm.Unet('resnext50', classes=1, activation='sigmoid', encoder_weights='imagenet', encoder_freeze=False, input_shape=inputs_size)
+modelresnext50 = sm.Unet('resnext50', classes=1, activation='sigmoid', encoder_weights='imagenet', encoder_freeze=False,
+                         input_shape=inputs_size)
 callbackModelCheckPointresnext50 = [ModelCheckpoint('ResNextUnet_POLYP.hdf5', verbose=2, save_best_only=True)]
 
 ###ResNet###
-modelresnet50 = sm.Unet('resnet50', activation='sigmoid', classes=1, encoder_weights='imagenet', encoder_freeze=False, input_shape=inputs_size)
+modelresnet50 = sm.Unet('resnet50', activation='sigmoid', classes=1, encoder_weights='imagenet', encoder_freeze=False,
+                        input_shape=inputs_size)
 callbackModelCheckPointresnet50 = [ModelCheckpoint('ResUnet_POLYP.hdf5', verbose=2, save_best_only=True)]
 
 ###Inceptionv3###
-modelinceptionv3 = sm.Unet('inceptionv3', classes=1, activation='sigmoid', encoder_weights='imagenet', encoder_freeze=False, input_shape=inputs_size)
+modelinceptionv3 = sm.Unet('inceptionv3', classes=1, activation='sigmoid', encoder_weights='imagenet',
+                           encoder_freeze=False, input_shape=inputs_size)
 callbackModelCheckPointinceptionv3 = [ModelCheckpoint('Inceptionv3_POLYP.hdf5', verbose=2, save_best_only=True)]
 
 ###InceptionResNetv2###
-modelinceptionresnetv2 = sm.Unet('inceptionresnetv2', classes=1, activation='sigmoid', encoder_weights='imagenet', encoder_freeze=False, input_shape=inputs_size)
-callbackModelCheckPointinceptionresnetv2 = [ModelCheckpoint('inceptionresnetv2_POLYP.hdf5', verbose=2, save_best_only=True)]
+modelinceptionresnetv2 = sm.Unet('inceptionresnetv2', classes=1, activation='sigmoid', encoder_weights='imagenet',
+                                 encoder_freeze=False, input_shape=inputs_size)
+callbackModelCheckPointinceptionresnetv2 = [
+    ModelCheckpoint('inceptionresnetv2_POLYP.hdf5', verbose=2, save_best_only=True)]
 
-#model.summary()
+# model.summary()
 
 '''Model compile and training'''
-# model.compile(loss=bce_dice_loss, optimizer=opt,
-#               metrics=['binary_accuracy', dice_coef, iou])
-#
-# history = model.fit(train_gen,
-#                     steps_per_epoch=len(df_train) / batchSIZE,
-#                     epochs=epochs,
-#                     validation_data=valid_generator,
-#                     validation_steps=len(df_val) / batchSIZE, verbose=2,
-#                     callbacks=[callbackModelCheckPoint, callbackEarlyStopping])
-
-#trainingConfiguration(modelvgg19, callbackModelCheckPointvgg19)
-#trainingConfiguration(modelresnext50, callbackModelCheckPointresnext50)
-#trainingConfiguration(modelresnet50, callbackModelCheckPointresnet50)
-#trainingConfiguration(modelinceptionv3, callbackModelCheckPointinceptionv3)
+# trainingConfiguration(modelvgg19, callbackModelCheckPointvgg19)
+# trainingConfiguration(modelresnext50, callbackModelCheckPointresnext50)
+# trainingConfiguration(modelresnet50, callbackModelCheckPointresnet50)
+# trainingConfiguration(modelinceptionv3, callbackModelCheckPointinceptionv3)
 trainingConfiguration(modelinceptionresnetv2, callbackModelCheckPointinceptionresnetv2)

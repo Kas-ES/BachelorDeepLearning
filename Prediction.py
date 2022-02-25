@@ -18,15 +18,12 @@ from tensorflow.keras import backend as K
 import matplotlib.pyplot as plt
 from keras_preprocessing.image import ImageDataGenerator
 from sklearn.metrics import classification_report, confusion_matrix
-from skimage.io import imread, imsave
-from skimage.transform import resize
-
+import seaborn as sns
 
 print(device_lib.list_local_devices())
 physical_devices = tf.config.list_physical_devices("GPU")
 
 IMG_HEIGHT, IMG_WIDTH, IMG_CHANNELS = [256, 256, 3]
-
 
 # Testing
 df_test_files = []
@@ -40,16 +37,17 @@ index = 0
 nopolyp = 'Dataset_CCE/SortedDataset/df_test\\NoPolyp'
 _mask = '_mask'
 _png = '.png'
-comparator = nopolyp+str(index)+_mask+_png
+comparator = nopolyp + str(index) + _mask + _png
 for i in df_test_mask_files:
     comparator = nopolyp + str(index) + _mask + _png
-    if i == comparator or i == nopolyp+str(nopolyp)+_png:
+    if i == comparator or i == nopolyp + str(nopolyp) + _png:
         df_test_labels.append("No Polyp")
     else:
         df_test_labels.append("Polyp")
     index += 1
 
-df_test = pd.DataFrame(data={"filename": df_test_files, 'mask': df_test_mask_files, 'label': df_test_labels}, index=[df_test_labels])
+df_test = pd.DataFrame(data={"filename": df_test_files, 'mask': df_test_mask_files, 'label': df_test_labels},
+                       index=[df_test_labels])
 
 print(df_test.describe())
 print(df_test.head())
@@ -61,36 +59,25 @@ inputs_size = (IMG_HEIGHT, IMG_WIDTH, IMG_CHANNELS)
 ground_truth = np.array([])
 
 for i in range(321):
-  mask = cv2.imread(df_test['mask'].iloc[i])
-  mask = cv2.cvtColor(mask, cv2.COLOR_BGR2GRAY)
-  mask = cv2.resize(mask, (IMG_HEIGHT, IMG_WIDTH))
-  mask = mask / 255
-  mask[mask > 0.5] = 1
-  mask[mask <= 0.5] = 0
-  if ground_truth.size == 0:
-    ground_truth = np.array([mask])
-  else:
-      ground_truth = np.append(ground_truth, np.array([mask]), axis=0)
-
-
-#print("GROUND TRUTH SIZE:::", ground_truth.size)
-#print("GROUND TRUTH::::",ground_truth.shape)
-#ground_truth = np.argmax(ground_truth, axis=2)
-#print("ARGMAX::::", ground_truth.shape)
-#ground_truth = np.reshape(ground_truth, (321,256, 1))
-#print("ARGMAX::::", ground_truth.shape)
-
-ground_truth = np.ndarray.flatten(ground_truth)
-print(ground_truth.round(2))
+    mask = cv2.imread(df_test['mask'].iloc[i])
+    mask = cv2.cvtColor(mask, cv2.COLOR_BGR2GRAY)
+    mask = cv2.resize(mask, (IMG_HEIGHT, IMG_WIDTH))
+    mask = mask / 255
+    mask[mask > 0.5] = 1
+    mask[mask <= 0.5] = 0
+    if ground_truth.size == 0:
+        ground_truth = np.array([mask])
+    else:
+        ground_truth = np.append(ground_truth, np.array([mask]), axis=0)
 
 ground_truth = np.where(ground_truth > 0.5, 1, 0)
+ground_truth = np.ndarray.flatten(ground_truth)
 
 ####
 aug_dict = None
 
 image_datagen = ImageDataGenerator()
 mask_datagen = ImageDataGenerator()
-
 
 image_generator = image_datagen.flow_from_dataframe(
     df_test,
@@ -99,7 +86,7 @@ image_generator = image_datagen.flow_from_dataframe(
     classes=['No Polyp', 'Polyp'],
     class_mode='binary',
     color_mode='rgb',
-    target_size=(IMG_HEIGHT,IMG_WIDTH),
+    target_size=(IMG_HEIGHT, IMG_WIDTH),
     batch_size=1,
     save_to_dir=None,
     save_prefix='"image"',
@@ -113,12 +100,13 @@ mask_generator = mask_datagen.flow_from_dataframe(
     classes=['No Polyp', 'Polyp'],
     class_mode='binary',
     color_mode='grayscale',
-    target_size=(IMG_HEIGHT,IMG_WIDTH),
+    target_size=(IMG_HEIGHT, IMG_WIDTH),
     batch_size=1,
     save_to_dir=None,
     save_prefix='mask',
     shuffle=False,
     seed=1)
+
 
 # 512 -- 256
 def train_generator(image_generator, mask_generator):
@@ -128,8 +116,8 @@ def train_generator(image_generator, mask_generator):
     and mask is the same if you want to visualize the results of generator,
     set save_to_dir = "your path"
     '''
-    #image_datagen = ImageDataGenerator(**aug_dict)
-    #mask_datagen = ImageDataGenerator(**aug_dict)
+    # image_datagen = ImageDataGenerator(**aug_dict)
+    # mask_datagen = ImageDataGenerator(**aug_dict)
 
     train_gen = zip(image_generator, mask_generator)
 
@@ -172,6 +160,7 @@ def imageVis(model):
         plt.title('Prediction')
         plt.show()
 
+
 smooth = 1
 
 
@@ -198,44 +187,39 @@ def iou(y_true, y_pred):
     jac = (intersection + smooth) / (sum_ - intersection + smooth)
     return jac
 
+
 batchSIZE = 1
 learning_rate = 1e-4
 epochs = 100
 
-decay_rate = learning_rate/epochs
+decay_rate = learning_rate / epochs
 test_gen = train_generator(image_generator, mask_generator)
 
+# modelincresnet = keras.models.load_model('inceptionresnetv2_POLYP.hdf5', custom_objects={'bce_dice_loss': bce_dice_loss, 'iou': iou, 'dice_coef': dice_coef})
+
+modelinception = keras.models.load_model('Inceptionv3_POLYP.hdf5',
+                                         custom_objects={'bce_dice_loss': bce_dice_loss, 'iou': iou,
+                                                         'dice_coef': dice_coef})
+
+# modelRES = keras.models.load_model('ResUnet_POLYP.hdf5', custom_objects={'bce_dice_loss': bce_dice_loss, 'iou': iou, 'dice_coef': dice_coef})
+
+# modelINC = keras.models.load_model('Inceptionv3_POLYP.hdf5',
+# custom_objects={'bce_dice_loss': bce_dice_loss, 'iou': iou, 'dice_coef': dice_coef})
 
 
-modelincresnet = keras.models.load_model('inceptionresnetv2_POLYP.hdf5', custom_objects={'bce_dice_loss': bce_dice_loss, 'iou': iou, 'dice_coef': dice_coef})
+Y_pred = modelinception.predict(test_gen, steps=321, verbose=1)
 
-#modelRES = keras.models.load_model('ResUnet_POLYP.hdf5', custom_objects={'bce_dice_loss': bce_dice_loss, 'iou': iou, 'dice_coef': dice_coef})
-
-#modelINC = keras.models.load_model('Inceptionv3_POLYP.hdf5',
-                      #custom_objects={'bce_dice_loss': bce_dice_loss, 'iou': iou, 'dice_coef': dice_coef})
-
-
-Y_pred = modelincresnet.predict(test_gen, steps=321 ,verbose=1)
-
-wtf = mask_generator.classes
-
-print("WWWWW::::",wtf)
-
-print('Y_pred:::',Y_pred.shape)
-
+Y_pred = np.where(Y_pred > 0.5, 1, 0)
 Y_pred = np.ndarray.flatten(Y_pred)
-print(Y_pred.round(2))
 
-y_pred = np.where(Y_pred >0.5, 1, 0)
-#
-# y_pred = np.argmax(Y_pred, axis=2)
-# y_predArray = np.argmax(y_pred, axis=2)
-# y_predArray = np.argmax(y_predArray, axis=1)
-# y_predList = list(y_predArray)
-# #print('y_pred::::', y_pred)
+cmat = confusion_matrix(ground_truth, Y_pred)
 
-target_names = ['No Polyp', 'Polyp']
-print("CONFUSION MATRIX")
-print(confusion_matrix(ground_truth , y_pred))
-print('Classification Report')
-print(classification_report(ground_truth, y_pred, target_names=target_names))
+print(cmat)
+print(classification_report(ground_truth, Y_pred, target_names=['No Polyp', 'Polyp']))
+
+plt.figure(figsize=(6, 6))
+sns.heatmap(cmat / np.sum(cmat), cmap="Reds", annot=True, fmt='.2%', square=1, linewidth=2.)
+plt.xlabel("predictions")
+plt.ylabel("real values")
+plt.title(modelinception.name)
+plt.show()
