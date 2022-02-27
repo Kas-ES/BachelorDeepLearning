@@ -18,9 +18,10 @@ from tensorflow.keras import backend as K
 
 import matplotlib.pyplot as plt
 from keras_preprocessing.image import ImageDataGenerator
-from sklearn.metrics import classification_report, confusion_matrix
+from sklearn.metrics import classification_report, confusion_matrix, precision_recall_curve, PrecisionRecallDisplay
 import seaborn as sns
 from ttictoc import tic, toc
+
 
 print(device_lib.list_local_devices())
 physical_devices = tf.config.list_physical_devices("GPU")
@@ -43,18 +44,18 @@ df_test_mask_files = natsorted(glob('Dataset_CCE/SortedDataset/df_test/*_mask*')
 for i in df_test_mask_files:
     df_test_files.append(i.replace('_mask', ''))
 
-index = 0
-nopolyp = 'Dataset_CCE/SortedDataset/df_test\\NoPolyp'
-_mask = '_mask'
-_png = '.png'
-comparator = nopolyp + str(index) + _mask + _png
-for i in df_test_mask_files:
-    comparator = nopolyp + str(index) + _mask + _png
-    if i == comparator or i == nopolyp + str(nopolyp) + _png:
-        df_test_labels.append("No Polyp")
-    else:
-        df_test_labels.append("Polyp")
-    index += 1
+# index = 0
+# nopolyp = 'Dataset_CCE/SortedDataset/df_test\\NoPolyp'
+# _mask = '_mask'
+# _png = '.png'
+# comparator = nopolyp + str(index) + _mask + _png
+# for i in df_test_mask_files:
+#     comparator = nopolyp + str(index) + _mask + _png
+#     if i == comparator or i == nopolyp + str(nopolyp) + _png:
+#         df_test_labels.append("No Polyp")
+#     else:
+#         df_test_labels.append("Polyp")
+#     index += 1
 
 df_test = pd.DataFrame(data={"filename": df_test_files, 'mask': df_test_mask_files})
 
@@ -189,7 +190,7 @@ def imageVis(model, dataframe):
         plt.show()
 
 
-def precision_recall_curve(y_true, pred_scores, thresholds):
+def precision_recall_curve_custom(y_true, pred_scores, thresholds):
     precisions = []
     recalls = []
 
@@ -284,6 +285,7 @@ InceptionResnetV2 = keras.models.load_model('2NoPolyp/inceptionresnetv2_2NoPOLYP
 EUnet = keras.models.load_model('2NoPolyp/EUnet_2NoPOLYP.hdf5',
                                 custom_objects={'bce_dice_loss': bce_dice_loss, 'iou': iou, 'dice_coef': dice_coef})
 
+#Training Set
 df_trainingSet = df_test2P
 
 test_gen = train_generator(df_trainingSet, batchSIZE,
@@ -300,10 +302,10 @@ def model_prediction(model, name):
 
 
 ground_truthTest = readAndsaveGroundTruth(int(df_trainingSet.size / 2), df_trainingSet)
-ground_truthTest = convertToBinary_Flatten(ground_truthTest)
-ground_truthTestofOnes = np.count_nonzero(ground_truthTest == 1)
+ground_truthTest1D = convertToBinary_Flatten(ground_truthTest)
+ground_truthTestofOnes = np.count_nonzero(ground_truthTest1D == 1)
 print('Percentage of 1s in the overall ground truth masks is::: ',
-      (ground_truthTestofOnes / ground_truthTest.size) * 100)
+      (ground_truthTestofOnes / ground_truthTest1D.size) * 100)
 
 
 predVGG19 = model_prediction(VGG19, 'VGG19Unet')
@@ -314,29 +316,69 @@ predInceptionResnetV2 = model_prediction(InceptionResnetV2, 'InceptionResnetV2')
 predEUnet = model_prediction(EUnet, 'EU-Net')
 
 # Thresholds
-thresholds = np.arange(start=0.05, stop=0.95, step=0.05)
 
+'''Sklearn precision recall method'''
 print("VGG19")
-confusionMatrixAndClasificaitonReport(predVGG19, ground_truthTest, 'VGG19')
-precisions, recalls = precision_recall_curve(ground_truthTest, predVGG19, thresholds)
+confusionMatrixAndClasificaitonReport(predVGG19, ground_truthTest1D, 'VGG19')
+precision,recall, thresholds = precision_recall_curve(ground_truthTest1D, predVGG19)
+disp = PrecisionRecallDisplay(precision=precision, recall=recall)
+disp.plot()
+plt.show()
+print("ResNeXt")
+confusionMatrixAndClasificaitonReport(predResNextUnet, ground_truthTest1D, 'ResNeXt')
+precision,recall, thresholds = precision_recall_curve(ground_truthTest1D, predResNextUnet)
+disp = PrecisionRecallDisplay(precision=precision, recall=recall)
+disp.plot()
+plt.show()
+print("ResNet")
+confusionMatrixAndClasificaitonReport(predResnet, ground_truthTest1D, 'ResNet')
+precision,recall, thresholds = precision_recall_curve(ground_truthTest1D, predResnet)
+disp = PrecisionRecallDisplay(precision=precision, recall=recall)
+disp.plot()
+plt.show()
+print("InceptionV3")
+confusionMatrixAndClasificaitonReport(predInceptionV3, ground_truthTest1D, 'InceptionV3')
+precision,recall, thresholds = precision_recall_curve(ground_truthTest1D, predInceptionV3)
+disp = PrecisionRecallDisplay(precision=precision, recall=recall)
+disp.plot()
+plt.show()
+print("InceptionResNetV2")
+confusionMatrixAndClasificaitonReport(predInceptionResnetV2, ground_truthTest1D, 'InceptionResNetV2')
+precision,recall, thresholds = precision_recall_curve(ground_truthTest1D, predInceptionResnetV2)
+disp = PrecisionRecallDisplay(precision=precision, recall=recall)
+disp.plot()
+plt.show()
+print("EU-Net")
+confusionMatrixAndClasificaitonReport(predEUnet, ground_truthTest1D, 'EU-Net')
+precision,recall, thresholds = precision_recall_curve(ground_truthTest1D, predEUnet)
+disp = PrecisionRecallDisplay(precision=precision, recall=recall)
+disp.plot()
+plt.show()
+
+# Thresholds
+thresholds = np.arange(start=0.05, stop=0.95, step=0.05)
+'''Custom precision recall method'''
+print("VGG19")
+confusionMatrixAndClasificaitonReport(predVGG19, ground_truthTest1D, 'VGG19')
+precisions, recalls = precision_recall_curve_custom(ground_truthTest1D, predVGG19, thresholds)
 plotPrecision_Recall_Curve(recalls, precisions)
 print("ResNeXt")
-confusionMatrixAndClasificaitonReport(predResNextUnet, ground_truthTest, 'ResNeXt')
-precisions, recalls = precision_recall_curve(ground_truthTest, predResNextUnet, thresholds)
+confusionMatrixAndClasificaitonReport(predResNextUnet, ground_truthTest1D, 'ResNeXt')
+precisions, recalls = precision_recall_curve_custom(ground_truthTest1D, predResNextUnet, thresholds)
 plotPrecision_Recall_Curve(recalls, precisions)
 print("ResNet")
-confusionMatrixAndClasificaitonReport(predResnet, ground_truthTest, 'ResNet')
-precisions, recalls = precision_recall_curve(ground_truthTest, predResnet, thresholds)
+confusionMatrixAndClasificaitonReport(predResnet, ground_truthTest1D, 'ResNet')
+precisions, recalls = precision_recall_curve_custom(ground_truthTest1D, predResnet, thresholds)
 plotPrecision_Recall_Curve(recalls, precisions)
 print("InceptionV3")
-confusionMatrixAndClasificaitonReport(predInceptionV3, ground_truthTest, 'InceptionV3')
-precisions, recalls = precision_recall_curve(ground_truthTest, predInceptionV3, thresholds)
+confusionMatrixAndClasificaitonReport(predInceptionV3, ground_truthTest1D, 'InceptionV3')
+precisions, recalls = precision_recall_curve_custom(ground_truthTest1D, predInceptionV3, thresholds)
 plotPrecision_Recall_Curve(recalls, precisions)
 print("InceptionResNetV2")
-confusionMatrixAndClasificaitonReport(predInceptionResnetV2, ground_truthTest, 'InceptionResNetV2')
-precisions, recalls = precision_recall_curve(ground_truthTest, predInceptionResnetV2, thresholds)
+confusionMatrixAndClasificaitonReport(predInceptionResnetV2, ground_truthTest1D, 'InceptionResNetV2')
+precisions, recalls = precision_recall_curve_custom(ground_truthTest1D, predInceptionResnetV2, thresholds)
 plotPrecision_Recall_Curve(recalls, precisions)
 print("EU-Net")
-confusionMatrixAndClasificaitonReport(predEUnet, ground_truthTest, 'EU-Net')
-precisions, recalls = precision_recall_curve(ground_truthTest, predEUnet, thresholds)
+confusionMatrixAndClasificaitonReport(predEUnet, ground_truthTest1D, 'EU-Net')
+precisions, recalls = precision_recall_curve_custom(ground_truthTest1D, predEUnet, thresholds)
 plotPrecision_Recall_Curve(recalls, precisions)
