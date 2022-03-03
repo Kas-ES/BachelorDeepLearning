@@ -1,0 +1,193 @@
+__________________________________________________________________________________________________
+ Layer (type)                   Output Shape         Param #     Connected to                     
+==================================================================================================
+ input_2 (InputLayer)           [(None, 256, 256, 3  0           []                               
+                                )]                                                                
+                                                                                                  
+ block1_conv1 (Conv2D)          (None, 256, 256, 64  1792        ['input_2[0][0]']                
+                                )                                                                 
+                                                                                                  
+ block1_conv2 (Conv2D)          (None, 256, 256, 64  36928       ['block1_conv1[0][0]']           
+                                )                                                                 
+                                                                                                  
+ block1_pool (MaxPooling2D)     (None, 128, 128, 64  0           ['block1_conv2[0][0]']           
+                                )                                                                 
+                                                                                                  
+ block2_conv1 (Conv2D)          (None, 128, 128, 12  73856       ['block1_pool[0][0]']            
+                                8)                                                                
+                                                                                                  
+ block2_conv2 (Conv2D)          (None, 128, 128, 12  147584      ['block2_conv1[0][0]']           
+                                8)                                                                
+                                                                                                  
+ block2_pool (MaxPooling2D)     (None, 64, 64, 128)  0           ['block2_conv2[0][0]']           
+                                                                                                  
+ block3_conv1 (Conv2D)          (None, 64, 64, 256)  295168      ['block2_pool[0][0]']            
+                                                                                                  
+ block3_conv2 (Conv2D)          (None, 64, 64, 256)  590080      ['block3_conv1[0][0]']           
+                                                                                                  
+ block3_conv3 (Conv2D)          (None, 64, 64, 256)  590080      ['block3_conv2[0][0]']           
+                                                                                                  
+ block3_conv4 (Conv2D)          (None, 64, 64, 256)  590080      ['block3_conv3[0][0]']           
+                                                                                                  
+ block3_pool (MaxPooling2D)     (None, 32, 32, 256)  0           ['block3_conv4[0][0]']           
+                                                                                                  
+ block4_conv1 (Conv2D)          (None, 32, 32, 512)  1180160     ['block3_pool[0][0]']            
+                                                                                                  
+ block4_conv2 (Conv2D)          (None, 32, 32, 512)  2359808     ['block4_conv1[0][0]']           
+                                                                                                  
+ block4_conv3 (Conv2D)          (None, 32, 32, 512)  2359808     ['block4_conv2[0][0]']           
+                                                                                                  
+ block4_conv4 (Conv2D)          (None, 32, 32, 512)  2359808     ['block4_conv3[0][0]']           
+                                                                                                  
+ block4_pool (MaxPooling2D)     (None, 16, 16, 512)  0           ['block4_conv4[0][0]']           
+                                                                                                  
+ block5_conv1 (Conv2D)          (None, 16, 16, 512)  2359808     ['block4_pool[0][0]']            
+                                                                                                  
+ block5_conv2 (Conv2D)          (None, 16, 16, 512)  2359808     ['block5_conv1[0][0]']           
+                                                                                                  
+ block5_conv3 (Conv2D)          (None, 16, 16, 512)  2359808     ['block5_conv2[0][0]']           
+                                                                                                  
+ block5_conv4 (Conv2D)          (None, 16, 16, 512)  2359808     ['block5_conv3[0][0]']           
+                                                                                                  
+ block5_pool (MaxPooling2D)     (None, 8, 8, 512)    0           ['block5_conv4[0][0]']           
+                                                                                                  
+ center_block1_conv (Conv2D)    (None, 8, 8, 512)    2359296     ['block5_pool[0][0]']            
+                                                                                                  
+ center_block1_bn (BatchNormali  (None, 8, 8, 512)   2048        ['center_block1_conv[0][0]']     
+ zation)                                                                                          
+                                                                                                  
+ center_block1_relu (Activation  (None, 8, 8, 512)   0           ['center_block1_bn[0][0]']       
+ )                                                                                                
+                                                                                                  
+ center_block2_conv (Conv2D)    (None, 8, 8, 512)    2359296     ['center_block1_relu[0][0]']     
+                                                                                                  
+ center_block2_bn (BatchNormali  (None, 8, 8, 512)   2048        ['center_block2_conv[0][0]']     
+ zation)                                                                                          
+                                                                                                  
+ center_block2_relu (Activation  (None, 8, 8, 512)   0           ['center_block2_bn[0][0]']       
+ )                                                                                                
+                                                                                                  
+ decoder_stage0_upsampling (UpS  (None, 16, 16, 512)  0          ['center_block2_relu[0][0]']     
+ ampling2D)                                                                                       
+                                                                                                  
+ decoder_stage0_concat (Concate  (None, 16, 16, 1024  0          ['decoder_stage0_upsampling[0][0]
+ nate)                          )                                ',                               
+                                                                  'block5_conv4[0][0]']           
+                                                                                                  
+ decoder_stage0a_conv (Conv2D)  (None, 16, 16, 256)  2359296     ['decoder_stage0_concat[0][0]']  
+                                                                                                  
+ decoder_stage0a_bn (BatchNorma  (None, 16, 16, 256)  1024       ['decoder_stage0a_conv[0][0]']   
+ lization)                                                                                        
+                                                                                                  
+ decoder_stage0a_relu (Activati  (None, 16, 16, 256)  0          ['decoder_stage0a_bn[0][0]']     
+ on)                                                                                              
+                                                                                                  
+ decoder_stage0b_conv (Conv2D)  (None, 16, 16, 256)  589824      ['decoder_stage0a_relu[0][0]']   
+                                                                                                  
+ decoder_stage0b_bn (BatchNorma  (None, 16, 16, 256)  1024       ['decoder_stage0b_conv[0][0]']   
+ lization)                                                                                        
+                                                                                                  
+ decoder_stage0b_relu (Activati  (None, 16, 16, 256)  0          ['decoder_stage0b_bn[0][0]']     
+ on)                                                                                              
+                                                                                                  
+ decoder_stage1_upsampling (UpS  (None, 32, 32, 256)  0          ['decoder_stage0b_relu[0][0]']   
+ ampling2D)                                                                                       
+                                                                                                  
+ decoder_stage1_concat (Concate  (None, 32, 32, 768)  0          ['decoder_stage1_upsampling[0][0]
+ nate)                                                           ',                               
+                                                                  'block4_conv4[0][0]']           
+                                                                                                  
+ decoder_stage1a_conv (Conv2D)  (None, 32, 32, 128)  884736      ['decoder_stage1_concat[0][0]']  
+                                                                                                  
+ decoder_stage1a_bn (BatchNorma  (None, 32, 32, 128)  512        ['decoder_stage1a_conv[0][0]']   
+ lization)                                                                                        
+                                                                                                  
+ decoder_stage1a_relu (Activati  (None, 32, 32, 128)  0          ['decoder_stage1a_bn[0][0]']     
+ on)                                                                                              
+                                                                                                  
+ decoder_stage1b_conv (Conv2D)  (None, 32, 32, 128)  147456      ['decoder_stage1a_relu[0][0]']   
+                                                                                                  
+ decoder_stage1b_bn (BatchNorma  (None, 32, 32, 128)  512        ['decoder_stage1b_conv[0][0]']   
+ lization)                                                                                        
+                                                                                                  
+ decoder_stage1b_relu (Activati  (None, 32, 32, 128)  0          ['decoder_stage1b_bn[0][0]']     
+ on)                                                                                              
+                                                                                                  
+ decoder_stage2_upsampling (UpS  (None, 64, 64, 128)  0          ['decoder_stage1b_relu[0][0]']   
+ ampling2D)                                                                                       
+                                                                                                  
+ decoder_stage2_concat (Concate  (None, 64, 64, 384)  0          ['decoder_stage2_upsampling[0][0]
+ nate)                                                           ',                               
+                                                                  'block3_conv4[0][0]']           
+                                                                                                  
+ decoder_stage2a_conv (Conv2D)  (None, 64, 64, 64)   221184      ['decoder_stage2_concat[0][0]']  
+                                                                                                  
+ decoder_stage2a_bn (BatchNorma  (None, 64, 64, 64)  256         ['decoder_stage2a_conv[0][0]']   
+ lization)                                                                                        
+                                                                                                  
+ decoder_stage2a_relu (Activati  (None, 64, 64, 64)  0           ['decoder_stage2a_bn[0][0]']     
+ on)                                                                                              
+                                                                                                  
+ decoder_stage2b_conv (Conv2D)  (None, 64, 64, 64)   36864       ['decoder_stage2a_relu[0][0]']   
+                                                                                                  
+ decoder_stage2b_bn (BatchNorma  (None, 64, 64, 64)  256         ['decoder_stage2b_conv[0][0]']   
+ lization)                                                                                        
+                                                                                                  
+ decoder_stage2b_relu (Activati  (None, 64, 64, 64)  0           ['decoder_stage2b_bn[0][0]']     
+ on)                                                                                              
+                                                                                                  
+ decoder_stage3_upsampling (UpS  (None, 128, 128, 64  0          ['decoder_stage2b_relu[0][0]']   
+ ampling2D)                     )                                                                 
+                                                                                                  
+ decoder_stage3_concat (Concate  (None, 128, 128, 19  0          ['decoder_stage3_upsampling[0][0]
+ nate)                          2)                               ',                               
+                                                                  'block2_conv2[0][0]']           
+                                                                                                  
+ decoder_stage3a_conv (Conv2D)  (None, 128, 128, 32  55296       ['decoder_stage3_concat[0][0]']  
+                                )                                                                 
+                                                                                                  
+ decoder_stage3a_bn (BatchNorma  (None, 128, 128, 32  128        ['decoder_stage3a_conv[0][0]']   
+ lization)                      )                                                                 
+                                                                                                  
+ decoder_stage3a_relu (Activati  (None, 128, 128, 32  0          ['decoder_stage3a_bn[0][0]']     
+ on)                            )                                                                 
+                                                                                                  
+ decoder_stage3b_conv (Conv2D)  (None, 128, 128, 32  9216        ['decoder_stage3a_relu[0][0]']   
+                                )                                                                 
+                                                                                                  
+ decoder_stage3b_bn (BatchNorma  (None, 128, 128, 32  128        ['decoder_stage3b_conv[0][0]']   
+ lization)                      )                                                                 
+                                                                                                  
+ decoder_stage3b_relu (Activati  (None, 128, 128, 32  0          ['decoder_stage3b_bn[0][0]']     
+ on)                            )                                                                 
+                                                                                                  
+ decoder_stage4_upsampling (UpS  (None, 256, 256, 32  0          ['decoder_stage3b_relu[0][0]']   
+ ampling2D)                     )                                                                 
+                                                                                                  
+ decoder_stage4a_conv (Conv2D)  (None, 256, 256, 16  4608        ['decoder_stage4_upsampling[0][0]
+                                )                                ']                               
+                                                                                                  
+ decoder_stage4a_bn (BatchNorma  (None, 256, 256, 16  64         ['decoder_stage4a_conv[0][0]']   
+ lization)                      )                                                                 
+                                                                                                  
+ decoder_stage4a_relu (Activati  (None, 256, 256, 16  0          ['decoder_stage4a_bn[0][0]']     
+ on)                            )                                                                 
+                                                                                                  
+ decoder_stage4b_conv (Conv2D)  (None, 256, 256, 16  2304        ['decoder_stage4a_relu[0][0]']   
+                                )                                                                 
+                                                                                                  
+ decoder_stage4b_bn (BatchNorma  (None, 256, 256, 16  64         ['decoder_stage4b_conv[0][0]']   
+ lization)                      )                                                                 
+                                                                                                  
+ decoder_stage4b_relu (Activati  (None, 256, 256, 16  0          ['decoder_stage4b_bn[0][0]']     
+ on)                            )                                                                 
+                                                                                                  
+ final_conv (Conv2D)            (None, 256, 256, 1)  145         ['decoder_stage4b_relu[0][0]']   
+                                                                                                  
+ sigmoid (Activation)           (None, 256, 256, 1)  0           ['final_conv[0][0]']             
+                                                                                                  
+==================================================================================================
+Total params: 29,061,969
+Trainable params: 29,057,937
+Non-trainable params: 4,032
+__________________________________________________________________________________________________

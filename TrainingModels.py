@@ -3,17 +3,15 @@ import os
 import time
 
 import numpy as np
-from keras.backend import get_session, clear_session, set_session
-from keras.utils.vis_utils import plot_model
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 os.environ['CUDA_VISIBLE_DEVICES'] = '0'
 os.environ["SM_FRAMEWORK"] = "tf.keras"
-
-import tensorflow
+from tensorflow.python.keras.utils.vis_utils import plot_model
+import tensorflow as tf
+from tensorflow import keras
 from keras_preprocessing.image import ImageDataGenerator
 from natsort import natsorted
-from tensorflow import keras
 from tensorflow.python.client import device_lib
 from tensorflow.python.keras.callbacks import ModelCheckpoint
 
@@ -26,7 +24,7 @@ from keras_unet_collection import models
 import segmentation_models as sm
 
 print(device_lib.list_local_devices())
-physical_devices = tensorflow.config.list_physical_devices("GPU")
+physical_devices = tf.config.list_physical_devices("GPU")
 
 IMG_HEIGHT, IMG_WIDTH, IMG_CHANNELS = [256, 256, 3]
 
@@ -202,7 +200,7 @@ def dice_coef_loss(y_true, y_pred):
 
 
 def bce_dice_loss(y_true, y_pred):
-    bce = tensorflow.keras.losses.BinaryCrossentropy()
+    bce = tf.keras.losses.BinaryCrossentropy()
     return dice_coef_loss(y_true, y_pred) + bce(y_true, y_pred)
 
 
@@ -217,16 +215,17 @@ epochs = 150
 batchSIZE = 8
 learning_rate = 1e-4
 
-train_generator_args = dict(rotation_range=0.2,
-                            width_shift_range=0.09,
-                            height_shift_range=0.09,
-                            shear_range=0.09,
-                            zoom_range=0.015,
+train_generator_args = dict(rotation_range=45,
+                            #width_shift_range=0.1,
+                            #height_shift_range=0.1,
+                            #shear_range=0.05,
+                            zoom_range=0.05,
                             horizontal_flip=True,
                             vertical_flip=True,
-                            brightness_range=(0.7, 1.3),
-                            fill_mode="nearest",
+                            brightness_range=(0.85, 1.15),
+                            fill_mode="constant",
                             dtype=np.float32)
+
 print(train_generator_args.items())
 
 decay_rate = learning_rate / epochs
@@ -241,6 +240,11 @@ def trainingConfiguration(model, callbackModelCheckPoint, df_train, df_val, batc
 
     train_gen = train_generator(df_train, batchsize, train_generator_args,
                                 target_size=(IMG_HEIGHT, IMG_WIDTH))
+
+    polyp = [next(train_gen) for i in range(0,5)]
+    fig, ax = plt.subplots(1, 5, figsize=(16, 6))
+    l = [ax[i].imshow(polyp[i][0][0]) for i in range(0, 5)]
+    plt.show()
 
     valid_generator = train_generator(df_val, batchsize,
                                       dict(),
@@ -274,7 +278,6 @@ callbackModelCheckPointUnet2plus_2NoPolyp = [
     ModelCheckpoint('2NoPolyp/Unet2plus_2NoPolyp.hdf5', verbose=2, save_best_only=True)]
 callbackModelCheckPointUnet2plus_10NoPolyp = [
     ModelCheckpoint('10NoPolyp/Unet2plus_10NoPolyp.hdf5', verbose=2, save_best_only=True)]
-
 
 ###VGG19###
 modelvgg19 = sm.Unet('vgg19', classes=1, activation='sigmoid', encoder_weights='imagenet', encoder_freeze=False,
@@ -339,29 +342,29 @@ callbackModelCheckpointEUnet10NoPolyp = [
     ModelCheckpoint('10NoPolyp/EUnet_10NoPOLYP.hdf5', verbose=2, save_best_only=True)]
 
 '''Model compile and training 100% NO POLYP'''
-# trainingConfiguration(modelvgg19, callbackModelCheckPointvgg19_100NoPolyp, batchSIZE,"VGG19Unet","(100% No Polyp)")
-# trainingConfiguration(modelresnext50, callbackModelCheckPointresnext50_100NoPolyp, batchSIZE, "ResNeXt50", "(100% No Polyp)")
-# trainingConfiguration(modelresnet50, callbackModelCheckPointresnet50_100NoPolyp, batchSIZE, "ResNet50", "(100% No Polyp)")
-# trainingConfiguration(modelinceptionv3, callbackModelCheckPointinceptionv3_100NoPolyp, batchSIZE, "InceptionV3", "(100% No Polyp)")
-#trainingConfiguration(modelinceptionresnetv2, callbackModelCheckPointinceptionresnetv2_100NoPolyp, 6,"InceptionResnetV2","(100% No Polyp)")
-#trainingConfiguration(modelEUnet, callbackModelCheckpointEUnet100NoPolyp, df_train, df_val, batchSIZE, "EU-Net", "(100% No Polyp)")
-#trainingConfiguration(modelUnet2plus, callbackModelCheckPointUnet2plus_100NoPolyp, df_train, df_val, batchSIZE,"U-Net++", "(100% No Polyp)")
+###trainingConfiguration(modelvgg19, callbackModelCheckPointvgg19_100NoPolyp, df_train, df_val, batchSIZE, "VGG19Unet", "(100% No Polyp)")
+###trainingConfiguration(modelresnext50, callbackModelCheckPointresnext50_100NoPolyp,df_train, df_val, batchSIZE, "ResNeXt50", "(100% No Polyp)")
+###trainingConfiguration(modelresnet50, callbackModelCheckPointresnet50_100NoPolyp,df_train, df_val, batchSIZE, "ResNet50", "(100% No Polyp)")
+###trainingConfiguration(modelinceptionv3, callbackModelCheckPointinceptionv3_100NoPolyp,df_train, df_val, batchSIZE, "InceptionV3", "(100% No Polyp)")
+###trainingConfiguration(modelinceptionresnetv2, callbackModelCheckPointinceptionresnetv2_100NoPolyp, df_train, df_val, 6,"InceptionResnetV2","(100% No Polyp)")
+###trainingConfiguration(modelEUnet, callbackModelCheckpointEUnet100NoPolyp, df_train, df_val, batchSIZE, "EU-Net", "(100% No Polyp)")
+###trainingConfiguration(modelUnet2plus, callbackModelCheckPointUnet2plus_100NoPolyp, df_train, df_val, 4,"U-Net++", "(100% No Polyp)")
 
 '''Model compile and training 10% NO POLYP'''
-trainingConfiguration(modelvgg19, callbackModelCheckPointvgg19_10NoPolyp, df_train10P, df_val10P, batchSIZE,"VGG19Unet", "(10% No Polyp)")
-trainingConfiguration(modelresnext50, callbackModelCheckPointresnext50_10NoPolyp,df_train10P, df_val10P,batchSIZE, "ResNeXt50","(10% No Polyp)")
-trainingConfiguration(modelresnet50, callbackModelCheckPointresnet50_10NoPolyp, df_train10P, df_val10P, batchSIZE, "ResNet50","(10% No Polyp)")
-trainingConfiguration(modelinceptionv3, callbackModelCheckPointinceptionv3_10NoPolyp, df_train10P, df_val10P, batchSIZE, "InceptionV3","(10% No Polyp)")
-trainingConfiguration(modelinceptionresnetv2, callbackModelCheckPointinceptionresnetv2_10NoPolyp, df_train10P, df_val10P, 6,"InceptionResnetV2","(10% No Polyp)")
-trainingConfiguration(modelEUnet, callbackModelCheckpointEUnet10NoPolyp,df_train10P, df_val10P, batchSIZE, "EU-Net","(10% No Polyp)")
-trainingConfiguration(modelUnet2plus, callbackModelCheckPointUnet2plus_10NoPolyp, df_train10P, df_val10P, batchSIZE,"U-Net++""(10% No Polyp)")
+###trainingConfiguration(modelvgg19, callbackModelCheckPointvgg19_10NoPolyp, df_train10P, df_val10P, batchSIZE,"VGG19Unet", "(10% No Polyp)")
+###trainingConfiguration(modelresnext50, callbackModelCheckPointresnext50_10NoPolyp,df_train10P, df_val10P,batchSIZE, "ResNeXt50","(10% No Polyp)")
+###trainingConfiguration(modelresnet50, callbackModelCheckPointresnet50_10NoPolyp, df_train10P, df_val10P, batchSIZE, "ResNet50","(10% No Polyp)")
+###trainingConfiguration(modelinceptionv3, callbackModelCheckPointinceptionv3_10NoPolyp, df_train10P, df_val10P, batchSIZE, "InceptionV3","(10% No Polyp)")
+###trainingConfiguration(modelinceptionresnetv2, callbackModelCheckPointinceptionresnetv2_10NoPolyp, df_train10P, df_val10P, 6,"InceptionResnetV2","(10% No Polyp)")
+#trainingConfiguration(modelEUnet, callbackModelCheckpointEUnet10NoPolyp,df_train10P, df_val10P, batchSIZE, "EU-Net","(10% No Polyp)")
+#trainingConfiguration(modelUnet2plus, callbackModelCheckPointUnet2plus_10NoPolyp, df_train10P, df_val10P, 4, "U-Net++", "(10% No Polyp)")
 
 '''Model compile and training 2% NO POLYP'''
-#trainingConfiguration(modelvgg19, callbackModelCheckPointvgg19_2NoPolyp, df_train2P, df_val2P, batchSIZE, "VGG19Unet", "(2% No Polyp)")
-#trainingConfiguration(modelresnext50, callbackModelCheckPointresnext50_2NoPolyp,df_train2P, df_val2P, batchSIZE, "ResNeXt50","(2% No Polyp)")
-#trainingConfiguration(modelresnet50, callbackModelCheckPointresnet50_2NoPolyp,df_train2P, df_val2P, batchSIZE, "ResNet50","(2% No Polyp)")
-#trainingConfiguration(modelinceptionv3, callbackModelCheckPointinceptionv3_2NoPolyp,df_train2P, df_val2P, batchSIZE, "InceptionV3","(2% No Polyp)")
-#trainingConfiguration(modelinceptionresnetv2, callbackModelCheckPointinceptionresnetv2_2NoPolyp, df_train2P, df_val2P, 6, "InceptionResnetV2","(2% No Polyp)")
+###trainingConfiguration(modelvgg19, callbackModelCheckPointvgg19_2NoPolyp, df_train2P, df_val2P, batchSIZE, "VGG19Unet", "(2% No Polyp)")
+###trainingConfiguration(modelresnext50, callbackModelCheckPointresnext50_2NoPolyp,df_train2P, df_val2P, batchSIZE, "ResNeXt50","(2% No Polyp)")
+###trainingConfiguration(modelresnet50, callbackModelCheckPointresnet50_2NoPolyp,df_train2P, df_val2P, batchSIZE, "ResNet50","(2% No Polyp)")
+###trainingConfiguration(modelinceptionv3, callbackModelCheckPointinceptionv3_2NoPolyp,df_train2P, df_val2P, batchSIZE, "InceptionV3","(2% No Polyp)")
+###trainingConfiguration(modelinceptionresnetv2, callbackModelCheckPointinceptionresnetv2_2NoPolyp, df_train2P, df_val2P, 6, "InceptionResnetV2","(2% No Polyp)")
 #trainingConfiguration(modelEUnet, callbackModelCheckpointEUnet2NoPolyp,df_train2P, df_val2P, batchSIZE, "EU-Net", "(2% No Polyp)")
 #trainingConfiguration(modelUnet2plus, callbackModelCheckPointUnet2plus_2NoPolyp, df_train2P, df_val2P, 4, "U-Net++","(2% No Polyp)")
 
@@ -371,7 +374,24 @@ trainingConfiguration(modelUnet2plus, callbackModelCheckPointUnet2plus_10NoPolyp
 # plot_model(modelresnet50, "ModelArchitecturesPlot/modelresnet50.png", show_shapes=True, dpi=1536, show_layer_names=True)
 # plot_model(modelinceptionv3, "ModelArchitecturesPlot/modelinceptionv3.png", show_shapes=True, dpi=1536,
 #            show_layer_names=True)
-# plot_model(modelinceptionresnetv2, "ModelArchitecturesPlot/modelinceptionresnetv2.png", show_shapes=True, dpi=1536,
+# plot_model(modelinceptionresnetv2, "ModelArchitecturesPlot/modelinceptionresnetv2.png", show_shapes=True, dpi=3072,
 #            show_layer_names=True)
 # plot_model(modelEUnet, "ModelArchitecturesPlot/EUnet.png", show_shapes=True, dpi=1536, show_layer_names=True)
-#plot_model(modelUnet2plus,"Unet++.png", show_shapes=True, dpi=1536, show_layer_names=False )
+# plot_model(modelUnet2plus,"ModelArchitecturesPlot/Unet++.png", show_shapes=True, dpi=1536, show_layer_names=False )
+
+'''Model summaries'''
+#modelvgg19.summary()
+#modelresnext50.summary()
+#modelresnet50.summary()
+#modelinceptionv3.summary()
+#modelinceptionresnetv2.summary()
+#modelEUnet.summary()
+#modelUnet2plus.summary()
+
+
+
+
+
+
+
+
