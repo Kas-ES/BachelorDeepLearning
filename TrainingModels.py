@@ -32,71 +32,25 @@ IMG_HEIGHT, IMG_WIDTH, IMG_CHANNELS = [256, 256, 3]
 '''100% NO POLYP DATA'''
 # Training
 df_train_files = []
-df_train_mask_files = natsorted(glob('Dataset_CCE/SortedDataset/df_train/*_mask*'))
+df_train_mask_files = natsorted(glob('Dataset_CCE/New_DataSet/df_train/*.png'))
 
 for i in df_train_mask_files:
-    df_train_files.append(i.replace('_mask', ''))
+    df_train_files.append(i[:-3]+'jpg')
 
 df_train = pd.DataFrame(data={"filename": df_train_files, 'mask': df_train_mask_files})
 
 # Validaiton
 df_valid_files = []
-df_valid_mask_files = natsorted(glob('Dataset_CCE/SortedDataset/df_valid/*_mask*'))
+df_valid_mask_files = natsorted(glob('Dataset_CCE/New_DataSet/df_valid/*.png'))
 
 for i in df_valid_mask_files:
-    df_valid_files.append(i.replace('_mask', ''))
+    df_valid_files.append(i[:-3]+'jpg')
 
 df_val = pd.DataFrame(data={"filename": df_valid_files, 'mask': df_valid_mask_files})
 
-print("***100% No Polyp***")
 print(df_train.shape)
 print(df_val.shape)
 
-'''10% NO POLYP DATA'''
-# Training
-df_train_files10P = []
-df_train_mask_files10P = natsorted(glob('Dataset_CCE/SortedDataset/SortedDatasetNP_10percent/df_train/*_mask*'))
-
-for i in df_train_mask_files10P:
-    df_train_files10P.append(i.replace('_mask', ''))
-
-df_train10P = pd.DataFrame(data={"filename": df_train_files10P, 'mask': df_train_mask_files10P})
-
-# Validaiton
-df_valid_files10P = []
-df_valid_mask_files10P = natsorted(glob('Dataset_CCE/SortedDataset/SortedDatasetNP_10percent/df_valid/*_mask*'))
-
-for i in df_valid_mask_files10P:
-    df_valid_files10P.append(i.replace('_mask', ''))
-
-df_val10P = pd.DataFrame(data={"filename": df_valid_files10P, 'mask': df_valid_mask_files10P})
-
-print("***10% No Polyp***")
-print(df_train10P.shape)
-print(df_val10P.shape)
-
-'''2% NO POLYP DATA'''
-# Training
-df_train_files2P = []
-df_train_mask_files2P = natsorted(glob('Dataset_CCE/SortedDataset/SortedDatasetNP_2percent/df_train/*_mask*'))
-
-for i in df_train_mask_files2P:
-    df_train_files2P.append(i.replace('_mask', ''))
-
-df_train2P = pd.DataFrame(data={"filename": df_train_files2P, 'mask': df_train_mask_files2P})
-
-# Validaiton
-df_valid_files2P = []
-df_valid_mask_files2P = natsorted(glob('Dataset_CCE/SortedDataset/SortedDatasetNP_2percent/df_valid/*_mask*'))
-
-for i in df_valid_mask_files2P:
-    df_valid_files2P.append(i.replace('_mask', ''))
-
-df_val2P = pd.DataFrame(data={"filename": df_valid_files2P, 'mask': df_valid_mask_files2P})
-
-print("***2% No Polyp***")
-print(df_train2P.shape)
-print(df_val2P.shape)
 
 inputs_size = (IMG_HEIGHT, IMG_WIDTH, IMG_CHANNELS)
 
@@ -157,10 +111,10 @@ def adjust_data(img, mask):
     return (img, mask)
 
 
-def plotAcuracy_Loss(history, modelname, noPolypPercentage):
+def plotAcuracy_Loss(history, modelname):
     plt.plot(history.history['iou'])
     plt.plot(history.history['val_iou'])
-    plt.title(modelname+'—Intersection over union'+noPolypPercentage)
+    plt.title(modelname+'—Intersection over union')
     plt.ylabel('IoU')
     plt.xlabel('Epoch')
     plt.legend(['Train', 'Valid'], loc='upper left')
@@ -168,7 +122,7 @@ def plotAcuracy_Loss(history, modelname, noPolypPercentage):
 
     plt.plot(history.history['dice_coef'])
     plt.plot(history.history['val_dice_coef'])
-    plt.title(modelname+'—Dice coefficient'+noPolypPercentage)
+    plt.title(modelname+'—Dice coefficient')
     plt.ylabel('Dice Coef')
     plt.xlabel('Epoch')
     plt.legend(['Train', 'Valid'], loc='upper left')
@@ -177,7 +131,7 @@ def plotAcuracy_Loss(history, modelname, noPolypPercentage):
     # summarize history for loss
     plt.plot(history.history['loss'])
     plt.plot(history.history['val_loss'])
-    plt.title(modelname+'—Dice coefficient loss'+noPolypPercentage)
+    plt.title(modelname+'—Dice coefficient loss')
     plt.ylabel('Loss')
     plt.xlabel('Epoch')
     plt.legend(['Train', 'Valid'], loc='upper left')
@@ -185,8 +139,6 @@ def plotAcuracy_Loss(history, modelname, noPolypPercentage):
 
 
 smooth = 1.
-
-
 def dice_coef(y_true, y_pred):
     y_true = K.flatten(y_true)
     y_pred = K.flatten(y_pred)
@@ -201,7 +153,7 @@ def dice_coef_loss(y_true, y_pred):
 
 def bce_dice_loss(y_true, y_pred):
     bce = tf.keras.losses.BinaryCrossentropy()
-    return dice_coef_loss(y_true, y_pred) + bce(y_true, y_pred)
+    return abs(dice_coef_loss(y_true, y_pred) + bce(y_true, y_pred))
 
 
 def iou(y_true, y_pred):
@@ -211,11 +163,11 @@ def iou(y_true, y_pred):
     return jac
 
 '''Training Configuration'''
-epochs = 150
-batchSIZE = 8
+epochs = 260
+batchSIZE = 4
 learning_rate = 1e-4
 
-train_generator_args = dict(rotation_range=45,
+train_generator_args1 = dict(rotation_range=45,
                             #width_shift_range=0.1,
                             #height_shift_range=0.1,
                             #shear_range=0.05,
@@ -223,32 +175,40 @@ train_generator_args = dict(rotation_range=45,
                             horizontal_flip=True,
                             vertical_flip=True,
                             brightness_range=(0.85, 1.15),
-                            fill_mode="constant",
-                            dtype=np.float32)
+                            fill_mode="constant")
 
-print(train_generator_args.items())
+# train_generator_args = dict(rotation_range=0.2,
+#                             width_shift_range=0.05,
+#                             height_shift_range=0.05,
+#                             shear_range=0.05,
+#                             zoom_range=0.05,
+#                             horizontal_flip=True,
+#                             vertical_flip=True,
+#                             brightness_range=(0.85, 1.15),
+#                             fill_mode='constant')
+
+print(train_generator_args1.items())
 
 decay_rate = learning_rate / epochs
 
-callbackEarlyStopping = keras.callbacks.EarlyStopping(monitor='val_loss', patience=40)
+callbackEarlyStopping = keras.callbacks.EarlyStopping(monitor='val_loss', patience=90)
 # callbackReduceROnPlateau = keras.callbacks.ReduceLROnPlateau(monitor='val_loss', factor=0.1, patience=6)
 
+train_gen = train_generator(df_train, batchSIZE, train_generator_args1,
+                              target_size=(IMG_HEIGHT, IMG_WIDTH))
 
-def trainingConfiguration(model, callbackModelCheckPoint, df_train, df_val, batchsize, modelName, noPolypPercentage):
+valid_generator = train_generator(df_val, batchSIZE,
+                                      dict(),
+                                      target_size=(IMG_HEIGHT, IMG_WIDTH))
+
+def trainingConfiguration(model, callbackModelCheckPoint, df_train, df_val, modelName):
     K.clear_session()
     gc.collect()
-
-    train_gen = train_generator(df_train, batchsize, train_generator_args,
-                                target_size=(IMG_HEIGHT, IMG_WIDTH))
 
     polyp = [next(train_gen) for i in range(0,5)]
     fig, ax = plt.subplots(1, 5, figsize=(16, 6))
     l = [ax[i].imshow(polyp[i][0][0]) for i in range(0, 5)]
     plt.show()
-
-    valid_generator = train_generator(df_val, batchsize,
-                                      dict(),
-                                      target_size=(IMG_HEIGHT, IMG_WIDTH))
 
     opt = keras.optimizers.Adam(learning_rate=learning_rate, beta_1=0.9, beta_2=0.999, epsilon=None, decay=decay_rate,
                                 amsgrad=False)
@@ -257,77 +217,43 @@ def trainingConfiguration(model, callbackModelCheckPoint, df_train, df_val, batc
                   metrics=['binary_accuracy', dice_coef, iou])
 
     history = model.fit(train_gen,
-                        steps_per_epoch=len(df_train) / batchsize,
+                        steps_per_epoch=len(df_train) / batchSIZE,
                         epochs=epochs,
                         validation_data=valid_generator,
-                        validation_steps=len(df_val) / batchsize, verbose=2,
+                        validation_steps=len(df_val) / batchSIZE, verbose=2,
                         callbacks=[callbackModelCheckPoint, callbackEarlyStopping])
 
-    plotAcuracy_Loss(history, modelName, noPolypPercentage)
+    plotAcuracy_Loss(history, modelName)
 
     time.sleep(90)
 
 
 '''Models'''
-##Unet++###
-#modelUnet2plus = models.unet_plus_2d(input_size=inputs_size, filter_num=(256,128,64,32,16), n_labels=2, output_activation='Sigmoid')
-modelUnet2plus = Models.UNetPP(inputs_size)
-callbackModelCheckPointUnet2plus_100NoPolyp = [
-    ModelCheckpoint('100NoPolyp/Unet2plus_100NoPolyp.hdf5', verbose=2, save_best_only=True)]
-callbackModelCheckPointUnet2plus_2NoPolyp = [
-    ModelCheckpoint('2NoPolyp/Unet2plus_2NoPolyp.hdf5', verbose=2, save_best_only=True)]
-callbackModelCheckPointUnet2plus_10NoPolyp = [
-    ModelCheckpoint('10NoPolyp/Unet2plus_10NoPolyp.hdf5', verbose=2, save_best_only=True)]
-
 ###VGG19###
-modelvgg19 = sm.Unet('vgg19', classes=1, activation='sigmoid', encoder_weights='imagenet', encoder_freeze=False,
-                     input_shape=inputs_size)
+modelvgg19 = Models.build_vgg19_unet()
 callbackModelCheckPointvgg19_100NoPolyp = [
-    ModelCheckpoint('100NoPolyp/VGGU19net_100NoPolyp.hdf5', verbose=2, save_best_only=True)]
-callbackModelCheckPointvgg19_2NoPolyp = [
-    ModelCheckpoint('2NoPolyp/VGGU19net_2NoPolyp.hdf5', verbose=2, save_best_only=True)]
-callbackModelCheckPointvgg19_10NoPolyp = [
-    ModelCheckpoint('10NoPolyp/VGGU19net_10NoPolyp.hdf5', verbose=2, save_best_only=True)]
+    ModelCheckpoint('New_modelsWithoutDropout/VGGU19net.hdf5', verbose=2, save_best_only=True)]
+
 
 ###ResNeXt50###
-modelresnext50 = sm.Unet('resnext50', classes=1, activation='sigmoid', encoder_weights='imagenet', encoder_freeze=False,
-                         input_shape=inputs_size)
+modelresnext50 = Models.build_resnext50()
 callbackModelCheckPointresnext50_100NoPolyp = [
-    ModelCheckpoint('100NoPolyp/ResNextUnet_100NoPolyp.hdf5', verbose=2, save_best_only=True)]
-callbackModelCheckPointresnext50_2NoPolyp = [
-    ModelCheckpoint('2NoPolyp/ResNextUnet_2NoPolyp.hdf5', verbose=2, save_best_only=True)]
-callbackModelCheckPointresnext50_10NoPolyp = [
-    ModelCheckpoint('10NoPolyp/ResNextUnet_10NoPolyp.hdf5', verbose=2, save_best_only=True)]
+    ModelCheckpoint('New_modelsWithoutDropout/ResNextUnet.hdf5', verbose=2, save_best_only=True)]
 
 ###ResNet50###
-modelresnet50 = sm.Unet('resnet50', activation='sigmoid', classes=1, encoder_weights='imagenet', encoder_freeze=False,
-                        input_shape=inputs_size)
+modelresnet50 = Models.build_resnet50()
 callbackModelCheckPointresnet50_100NoPolyp = [
-    ModelCheckpoint('100NoPolyp/ResUnet_100NoPolyp.hdf5', verbose=2, save_best_only=True)]
-callbackModelCheckPointresnet50_2NoPolyp = [
-    ModelCheckpoint('2NoPolyp/ResUnet_2NoPolyp.hdf5', verbose=2, save_best_only=True)]
-callbackModelCheckPointresnet50_10NoPolyp = [
-    ModelCheckpoint('10NoPolyp/ResUnet_10NoPolyp.hdf5', verbose=2, save_best_only=True)]
+    ModelCheckpoint('New_modelsWithoutDropout/ResUnet.hdf5', verbose=2, save_best_only=True)]
 
 ###Inceptionv3###
-modelinceptionv3 = sm.Unet('inceptionv3', classes=1, activation='sigmoid', encoder_weights='imagenet',
-                           encoder_freeze=False, input_shape=inputs_size)
+modelinceptionv3 = Models.build_inceptionV3()
 callbackModelCheckPointinceptionv3_100NoPolyp = [
-    ModelCheckpoint('100NoPolyp/Inceptionv3_100NoPolyp.hdf5', verbose=2, save_best_only=True)]
-callbackModelCheckPointinceptionv3_2NoPolyp = [
-    ModelCheckpoint('2NoPolyp/Inceptionv3_2NoPolyp.hdf5', verbose=2, save_best_only=True)]
-callbackModelCheckPointinceptionv3_10NoPolyp = [
-    ModelCheckpoint('10NoPolyp/Inceptionv3_10NoPolyp.hdf5', verbose=2, save_best_only=True)]
+    ModelCheckpoint('New_modelsWithoutDropout/Inceptionv3.hdf5', verbose=2, save_best_only=True)]
 
 ###InceptionResNetv2###
-modelinceptionresnetv2 = sm.Unet('inceptionresnetv2', classes=1, activation='sigmoid', encoder_weights='imagenet',
-                                 encoder_freeze=False, input_shape=inputs_size )
+modelinceptionresnetv2 = Models.build_inceptionresnetV2()
 callbackModelCheckPointinceptionresnetv2_100NoPolyp = [
-    ModelCheckpoint('100NoPolyp/inceptionresnetv2_100NoPOLYP.hdf5', verbose=2, save_best_only=True)]
-callbackModelCheckPointinceptionresnetv2_2NoPolyp = [
-    ModelCheckpoint('2NoPolyp/inceptionresnetv2_2NoPOLYP.hdf5', verbose=2, save_best_only=True)]
-callbackModelCheckPointinceptionresnetv2_10NoPolyp = [
-    ModelCheckpoint('10NoPolyp/inceptionresnetv2_10NoPOLYP.hdf5', verbose=2, save_best_only=True)]
+    ModelCheckpoint('New_modelsWithoutDropout/inceptionresnetv2.hdf5', verbose=2, save_best_only=True)]
 
 ###EU-Net###
 ##dd can never be higher than KK
@@ -336,37 +262,22 @@ KK = 4
 dd = 3
 modelEUnet = Models.EU_Net_Segmentation(NN, KK, dd, 'sigmoid')
 callbackModelCheckpointEUnet100NoPolyp = [
-    ModelCheckpoint('100NoPolyp/EUnet_100NoPOLYP.hdf5', verbose=2, save_best_only=True)]
-callbackModelCheckpointEUnet2NoPolyp = [ModelCheckpoint('2NoPolyp/EUnet_2NoPOLYP.hdf5', verbose=2, save_best_only=True)]
-callbackModelCheckpointEUnet10NoPolyp = [
-    ModelCheckpoint('10NoPolyp/EUnet_10NoPOLYP.hdf5', verbose=2, save_best_only=True)]
+    ModelCheckpoint('New_modelsWithoutDropout/EUnet.hdf5', verbose=2, save_best_only=True)]
 
-'''Model compile and training 100% NO POLYP'''
-###trainingConfiguration(modelvgg19, callbackModelCheckPointvgg19_100NoPolyp, df_train, df_val, batchSIZE, "VGG19Unet", "(100% No Polyp)")
-###trainingConfiguration(modelresnext50, callbackModelCheckPointresnext50_100NoPolyp,df_train, df_val, batchSIZE, "ResNeXt50", "(100% No Polyp)")
-###trainingConfiguration(modelresnet50, callbackModelCheckPointresnet50_100NoPolyp,df_train, df_val, batchSIZE, "ResNet50", "(100% No Polyp)")
-###trainingConfiguration(modelinceptionv3, callbackModelCheckPointinceptionv3_100NoPolyp,df_train, df_val, batchSIZE, "InceptionV3", "(100% No Polyp)")
-###trainingConfiguration(modelinceptionresnetv2, callbackModelCheckPointinceptionresnetv2_100NoPolyp, df_train, df_val, 6,"InceptionResnetV2","(100% No Polyp)")
-###trainingConfiguration(modelEUnet, callbackModelCheckpointEUnet100NoPolyp, df_train, df_val, batchSIZE, "EU-Net", "(100% No Polyp)")
-###trainingConfiguration(modelUnet2plus, callbackModelCheckPointUnet2plus_100NoPolyp, df_train, df_val, 4,"U-Net++", "(100% No Polyp)")
+##Unet++###
+modelUnet2plus = Models.UNetPP(inputs_size)
+callbackModelCheckPointUnet2plus_100NoPolyp = [
+    ModelCheckpoint('New_modelsWithoutDropout/Unet2plus.hdf5', verbose=2, save_best_only=True)]
 
-'''Model compile and training 10% NO POLYP'''
-###trainingConfiguration(modelvgg19, callbackModelCheckPointvgg19_10NoPolyp, df_train10P, df_val10P, batchSIZE,"VGG19Unet", "(10% No Polyp)")
-###trainingConfiguration(modelresnext50, callbackModelCheckPointresnext50_10NoPolyp,df_train10P, df_val10P,batchSIZE, "ResNeXt50","(10% No Polyp)")
-###trainingConfiguration(modelresnet50, callbackModelCheckPointresnet50_10NoPolyp, df_train10P, df_val10P, batchSIZE, "ResNet50","(10% No Polyp)")
-###trainingConfiguration(modelinceptionv3, callbackModelCheckPointinceptionv3_10NoPolyp, df_train10P, df_val10P, batchSIZE, "InceptionV3","(10% No Polyp)")
-###trainingConfiguration(modelinceptionresnetv2, callbackModelCheckPointinceptionresnetv2_10NoPolyp, df_train10P, df_val10P, 6,"InceptionResnetV2","(10% No Polyp)")
-#trainingConfiguration(modelEUnet, callbackModelCheckpointEUnet10NoPolyp,df_train10P, df_val10P, batchSIZE, "EU-Net","(10% No Polyp)")
-#trainingConfiguration(modelUnet2plus, callbackModelCheckPointUnet2plus_10NoPolyp, df_train10P, df_val10P, 4, "U-Net++", "(10% No Polyp)")
 
-'''Model compile and training 2% NO POLYP'''
-###trainingConfiguration(modelvgg19, callbackModelCheckPointvgg19_2NoPolyp, df_train2P, df_val2P, batchSIZE, "VGG19Unet", "(2% No Polyp)")
-###trainingConfiguration(modelresnext50, callbackModelCheckPointresnext50_2NoPolyp,df_train2P, df_val2P, batchSIZE, "ResNeXt50","(2% No Polyp)")
-###trainingConfiguration(modelresnet50, callbackModelCheckPointresnet50_2NoPolyp,df_train2P, df_val2P, batchSIZE, "ResNet50","(2% No Polyp)")
-###trainingConfiguration(modelinceptionv3, callbackModelCheckPointinceptionv3_2NoPolyp,df_train2P, df_val2P, batchSIZE, "InceptionV3","(2% No Polyp)")
-###trainingConfiguration(modelinceptionresnetv2, callbackModelCheckPointinceptionresnetv2_2NoPolyp, df_train2P, df_val2P, 6, "InceptionResnetV2","(2% No Polyp)")
-#trainingConfiguration(modelEUnet, callbackModelCheckpointEUnet2NoPolyp,df_train2P, df_val2P, batchSIZE, "EU-Net", "(2% No Polyp)")
-#trainingConfiguration(modelUnet2plus, callbackModelCheckPointUnet2plus_2NoPolyp, df_train2P, df_val2P, 4, "U-Net++","(2% No Polyp)")
+'''train_generator_args'''
+###trainingConfiguration(modelvgg19, callbackModelCheckPointvgg19_100NoPolyp, df_train, df_val, "VGG19Unet")
+###trainingConfiguration(modelresnext50, callbackModelCheckPointresnext50_100NoPolyp,df_train, df_val,  "ResNeXt50")
+###trainingConfiguration(modelresnet50, callbackModelCheckPointresnet50_100NoPolyp,df_train, df_val, "ResNet50")
+####trainingConfiguration(modelinceptionv3, callbackModelCheckPointinceptionv3_100NoPolyp,df_train, df_val,  "InceptionV3")
+###trainingConfiguration(modelinceptionresnetv2, callbackModelCheckPointinceptionresnetv2_100NoPolyp, df_train, df_val, "InceptionResnetV2")
+###trainingConfiguration(modelEUnet, callbackModelCheckpointEUnet100NoPolyp, df_train, df_val,  "EU-Net")
+###trainingConfiguration(modelUnet2plus, callbackModelCheckPointUnet2plus_100NoPolyp, df_train, df_val, "U-Net++ ")
 
 '''Plot The Models'''
 # plot_model(modelresnext50, "ModelArchitecturesPlot/modelresnext50.png", show_shapes=False,dpi=1536)
@@ -386,7 +297,7 @@ callbackModelCheckpointEUnet10NoPolyp = [
 #modelinceptionv3.summary()
 #modelinceptionresnetv2.summary()
 #modelEUnet.summary()
-#modelUnet2plus.summary()
+modelUnet2plus.summary()
 
 
 
