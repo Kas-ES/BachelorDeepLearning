@@ -11,13 +11,12 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 os.environ['CUDA_VISIBLE_DEVICES'] = '0'
 os.environ["SM_FRAMEWORK"] = "tf.keras"
 import numpy as np
-import tensorflow as tf
 from tensorflow import keras
 from keras_unet_collection._backbone_zoo import bach_norm_checker, backbone_zoo
 from keras_unet_collection._model_unet_2d import UNET_left, UNET_right
 from keras_unet_collection.layer_utils import CONV_output, decode_layer, CONV_stack, encode_layer
-from tensorflow.keras import Model, Input, activations
-from tensorflow.keras.layers import Conv2D, Activation, Add, UpSampling2D, MaxPool2D, Dropout, Conv2DTranspose, Concatenate, \
+from tensorflow.keras import Model, Input
+from tensorflow.keras.layers import Conv2D, Activation, Dropout, Conv2DTranspose, Concatenate, \
     Lambda, MaxPooling2D, concatenate, BatchNormalization, LeakyReLU
 from tensorflow.keras.regularizers import l2
 import segmentation_models as sm
@@ -26,6 +25,7 @@ IMG_HEIGHT, IMG_WIDTH, IMG_CHANNELS = [256, 256, 3]
 inputs_size = input_size = (IMG_HEIGHT, IMG_WIDTH, IMG_CHANNELS)
 
 inputs = keras.Input(shape=input_size)
+
 
 ##ResUnet
 def build_resnet50():
@@ -39,6 +39,7 @@ def build_resnet50():
     model_dp = Model(model_input, output)
     return model_dp
 
+
 def build_resnext50():
     modelresnext50 = sm.Unet('resnext50', classes=1, activation='sigmoid', encoder_weights='imagenet',
                              encoder_freeze=False,
@@ -50,6 +51,7 @@ def build_resnext50():
     model_dp = Model(model_input, output)
     return model_dp
 
+
 def build_inceptionV3():
     modelinceptionv3 = sm.Unet('inceptionv3', classes=1, activation='sigmoid', encoder_weights='imagenet',
                                encoder_freeze=False, input_shape=inputs_size)
@@ -59,6 +61,7 @@ def build_inceptionV3():
     output = Conv2D(1, 1, padding="same", activation="sigmoid")(dropout)
     model_dp = Model(model_input, output)
     return model_dp
+
 
 def build_inceptionresnetV2():
     modelinceptionresnetv2 = sm.Unet('inceptionresnetv2', classes=1, activation='sigmoid', encoder_weights='imagenet',
@@ -70,8 +73,9 @@ def build_inceptionresnetV2():
     model_dp = Model(model_input, output)
     return model_dp
 
+
 def build_Unet3p():
-    base_Unet3p = unet_3plus_2d(inputs_size, 1, [8,16,32,64,128,256], weights='None', batch_norm=True)
+    base_Unet3p = unet_3plus_2d(inputs_size, 1, [8, 16, 32, 64, 128, 256], weights='None', batch_norm=True)
 
     model_input = base_Unet3p.input
     model_output = base_Unet3p.layers[-3].output
@@ -90,7 +94,7 @@ def conv_block(input, num_filters):
     x = Conv2D(num_filters, 3, padding="same")(x)
     x = BatchNormalization()(x)
     x = Activation("relu")(x)
-    x = Dropout(0.3)(x)
+    # x = Dropout(0.3)(x)
 
     return x
 
@@ -125,8 +129,8 @@ def build_vgg19_unet():
     d3 = decoder_block(d2, s2, 128)
     d4 = decoder_block(d3, s1, 64)
 
+    # dropout = Dropout(0.5)(d4)
     dropout = Dropout(0.5)(d4)
-    #dropout = Dropout(0.5)(d4)
     """ Output """
     outputs = Conv2D(1, 1, padding="same", activation="sigmoid")(dropout)
 
@@ -135,15 +139,16 @@ def build_vgg19_unet():
 
 
 ##U-Net++
-#https://github.com/longpollehn/UnetPlusPlus/blob/master/unetpp.py
+# https://github.com/longpollehn/UnetPlusPlus/blob/master/unetpp.py
 
 
 def conv2d(filters: int):
-    return Conv2D(filters=filters,kernel_size=(3, 3),padding='same',kernel_regularizer=l2(0.),bias_regularizer=l2(0.))
+    return Conv2D(filters=filters, kernel_size=(3, 3), padding='same', kernel_regularizer=l2(0.),
+                  bias_regularizer=l2(0.))
 
 
 def conv2dtranspose(filters: int):
-    return Conv2DTranspose(filters=filters,kernel_size=(2, 2),strides=(2, 2),padding='same')
+    return Conv2DTranspose(filters=filters, kernel_size=(2, 2), strides=(2, 2), padding='same')
 
 
 def UNetPP(input, number_of_filters=2):
@@ -151,11 +156,11 @@ def UNetPP(input, number_of_filters=2):
     x00 = conv2d(filters=int(16 * number_of_filters))(model_input)
     x00 = BatchNormalization()(x00)
     x00 = LeakyReLU(0.01)(x00)
-    #x00 = Dropout(0.2)(x00)
+    # x00 = Dropout(0.2)(x00)
     x00 = conv2d(filters=int(16 * number_of_filters))(x00)
     x00 = BatchNormalization()(x00)
     x00 = LeakyReLU(0.01)(x00)
-    #x00 = Dropout(0.2)(x00)
+    # x00 = Dropout(0.2)(x00)
     p0 = MaxPooling2D(pool_size=(2, 2))(x00)
 
     x10 = conv2d(filters=int(32 * number_of_filters))(p0)
@@ -165,7 +170,7 @@ def UNetPP(input, number_of_filters=2):
     x10 = conv2d(filters=int(32 * number_of_filters))(x10)
     x10 = BatchNormalization()(x10)
     x10 = LeakyReLU(0.01)(x10)
-    #x10 = Dropout(0.2)(x10)
+    # x10 = Dropout(0.2)(x10)
     p1 = MaxPooling2D(pool_size=(2, 2))(x10)
 
     x01 = conv2dtranspose(int(16 * number_of_filters))(x10)
@@ -176,16 +181,16 @@ def UNetPP(input, number_of_filters=2):
     x01 = conv2d(filters=int(16 * number_of_filters))(x01)
     x01 = BatchNormalization()(x01)
     x01 = LeakyReLU(0.01)(x01)
-    #x01 = Dropout(0.2)(x01)
+    # x01 = Dropout(0.2)(x01)
 
     x20 = conv2d(filters=int(64 * number_of_filters))(p1)
     x20 = BatchNormalization()(x20)
     x20 = LeakyReLU(0.01)(x20)
-    #x20 = Dropout(0.2)(x20)
+    # x20 = Dropout(0.2)(x20)
     x20 = conv2d(filters=int(64 * number_of_filters))(x20)
     x20 = BatchNormalization()(x20)
     x20 = LeakyReLU(0.01)(x20)
-    #x20 = Dropout(0.2)(x20)
+    # x20 = Dropout(0.2)(x20)
     p2 = MaxPooling2D(pool_size=(2, 2))(x20)
 
     x11 = conv2dtranspose(int(16 * number_of_filters))(x20)
@@ -196,7 +201,7 @@ def UNetPP(input, number_of_filters=2):
     x11 = conv2d(filters=int(16 * number_of_filters))(x11)
     x11 = BatchNormalization()(x11)
     x11 = LeakyReLU(0.01)(x11)
-    #x11 = Dropout(0.2)(x11)
+    # x11 = Dropout(0.2)(x11)
 
     x02 = conv2dtranspose(int(16 * number_of_filters))(x11)
     x02 = concatenate([x00, x01, x02])
@@ -206,7 +211,7 @@ def UNetPP(input, number_of_filters=2):
     x02 = conv2d(filters=int(16 * number_of_filters))(x02)
     x02 = BatchNormalization()(x02)
     x02 = LeakyReLU(0.01)(x02)
-    #x02 = Dropout(0.2)(x02)
+    # x02 = Dropout(0.2)(x02)
 
     x30 = conv2d(filters=int(128 * number_of_filters))(p2)
     x30 = BatchNormalization()(x30)
@@ -215,7 +220,7 @@ def UNetPP(input, number_of_filters=2):
     x30 = conv2d(filters=int(128 * number_of_filters))(x30)
     x30 = BatchNormalization()(x30)
     x30 = LeakyReLU(0.01)(x30)
-    #x30 = Dropout(0.2)(x30)
+    # x30 = Dropout(0.2)(x30)
     p3 = MaxPooling2D(pool_size=(2, 2))(x30)
 
     x21 = conv2dtranspose(int(16 * number_of_filters))(x30)
@@ -226,7 +231,7 @@ def UNetPP(input, number_of_filters=2):
     x21 = conv2d(filters=int(16 * number_of_filters))(x21)
     x21 = BatchNormalization()(x21)
     x21 = LeakyReLU(0.01)(x21)
-    #x21 = Dropout(0.2)(x21)
+    # x21 = Dropout(0.2)(x21)
 
     x12 = conv2dtranspose(int(16 * number_of_filters))(x21)
     x12 = concatenate([x10, x11, x12])
@@ -236,7 +241,7 @@ def UNetPP(input, number_of_filters=2):
     x12 = conv2d(filters=int(16 * number_of_filters))(x12)
     x12 = BatchNormalization()(x12)
     x12 = LeakyReLU(0.01)(x12)
-    #x12 = Dropout(0.2)(x12)
+    # x12 = Dropout(0.2)(x12)
 
     x03 = conv2dtranspose(int(16 * number_of_filters))(x12)
     x03 = concatenate([x00, x01, x02, x03])
@@ -246,7 +251,7 @@ def UNetPP(input, number_of_filters=2):
     x03 = conv2d(filters=int(16 * number_of_filters))(x03)
     x03 = BatchNormalization()(x03)
     x03 = LeakyReLU(0.01)(x03)
-    #x03 = Dropout(0.2)(x03)
+    # x03 = Dropout(0.2)(x03)
 
     m = conv2d(filters=int(256 * number_of_filters))(p3)
     m = BatchNormalization()(m)
@@ -254,7 +259,7 @@ def UNetPP(input, number_of_filters=2):
     m = conv2d(filters=int(256 * number_of_filters))(m)
     m = BatchNormalization()(m)
     m = LeakyReLU(0.01)(m)
-    #m = Dropout(0.2)(m)
+    # m = Dropout(0.2)(m)
 
     x31 = conv2dtranspose(int(128 * number_of_filters))(m)
     x31 = concatenate([x31, x30])
@@ -264,7 +269,7 @@ def UNetPP(input, number_of_filters=2):
     x31 = conv2d(filters=int(128 * number_of_filters))(x31)
     x31 = BatchNormalization()(x31)
     x31 = LeakyReLU(0.01)(x31)
-    #x31 = Dropout(0.2)(x31)
+    # x31 = Dropout(0.2)(x31)
 
     x22 = conv2dtranspose(int(64 * number_of_filters))(x31)
     x22 = concatenate([x22, x20, x21])
@@ -274,7 +279,7 @@ def UNetPP(input, number_of_filters=2):
     x22 = conv2d(filters=int(64 * number_of_filters))(x22)
     x22 = BatchNormalization()(x22)
     x22 = LeakyReLU(0.01)(x22)
-    #x22 = Dropout(0.2)(x22)
+    # x22 = Dropout(0.2)(x22)
 
     x13 = conv2dtranspose(int(32 * number_of_filters))(x22)
     x13 = concatenate([x13, x10, x11, x12])
@@ -284,7 +289,7 @@ def UNetPP(input, number_of_filters=2):
     x13 = conv2d(filters=int(32 * number_of_filters))(x13)
     x13 = BatchNormalization()(x13)
     x13 = LeakyReLU(0.01)(x13)
-    #x13 = Dropout(0.2)(x13)
+    # x13 = Dropout(0.2)(x13)
 
     x04 = conv2dtranspose(int(16 * number_of_filters))(x13)
     x04 = concatenate([x04, x00, x01, x02, x03], axis=3)
@@ -301,7 +306,6 @@ def UNetPP(input, number_of_filters=2):
     return model
 
 
-
 ## EU-Net
 # KK = 4  # THE NUMBER OF CONTRACTING/EXPANSIVE STAGES IN PROPOSED EW-Net
 # dd = 3
@@ -311,17 +315,18 @@ def UNetPP(input, number_of_filters=2):
 
 def Con_Exp_Path(X, Y, n):
     L = Conv2D(2 ** X, (3, 3), kernel_initializer='he_normal',  # 'glorot_uniform', 'he_normal'
-                padding='same')(n)
+               padding='same')(n)
     L = BatchNormalization()(L)
     L = Activation('relu')(L)
     L = Conv2D(2 ** X, (3, 3), kernel_initializer='he_normal',  # 'glorot_uniform', 'he_normal'
-                padding='same')(n)
+               padding='same')(n)
     L = BatchNormalization()(L)
     L = Activation('relu')(L)
     L = Dropout(Y)(L)
     L = Conv2D(2 ** X, (3, 3), activation='relu', kernel_initializer='he_normal',  # 'glorot_uniform', 'he_normal'
-                padding='same')(L)
+               padding='same')(L)
     return L
+
 
 def EU_Net_Segmentation(NN, KK, dd, Final_Act):
     NL = 9 + (KK + dd - 1) * 5  # No. of layers for EU-Net architecture
@@ -340,8 +345,8 @@ def EU_Net_Segmentation(NN, KK, dd, Final_Act):
 
     for tt in np.arange(dd - 1, -1, -1):
         MD[gg + 3 * (dd - tt - 1) + 1] = Conv2DTranspose(2 ** (NN + KK - (dd - tt)), \
-                                                          (2, 2), strides=(2, 2), \
-                                                          padding='same')(MD[gg + 3 * (dd - tt - 1)])
+                                                         (2, 2), strides=(2, 2), \
+                                                         padding='same')(MD[gg + 3 * (dd - tt - 1)])
         MD[gg + 3 * (dd - tt - 1) + 2] = concatenate([MD[gg + 3 * (dd - tt - 1) + 1], MD[gg - 2 * (dd - tt)]])
         MD[gg + 3 * (dd - tt - 1) + 3] = Con_Exp_Path(NN + KK - (dd - tt), 0.1 * (1 + np.fix((KK - dd + tt) / 2)), \
                                                       MD[gg + 3 * (dd - tt - 1) + 2])
@@ -351,13 +356,13 @@ def EU_Net_Segmentation(NN, KK, dd, Final_Act):
     for tt in np.arange(0, dd):
         MD[gg + 2 * tt + 1] = MaxPooling2D((2, 2))(MD[gg + 2 * tt])
         MD[gg + 2 * tt + 2] = Con_Exp_Path(NN + KK + (tt + 1 - dd), 0.1 * (1 + np.fix((KK - dd + tt + 1) / 2)), \
-                                            MD[gg + 2 * tt + 1])
+                                           MD[gg + 2 * tt + 1])
 
     gg += 2 * dd  # e.g. for KK=3 & dd=1 ==> gg=13 or for KK=2 & dd=2==>gg=16
 
     for tt in np.arange(dd - 1, -1, -1):
         MD[gg + 3 * (dd - tt - 1) + 1] = Conv2DTranspose(2 ** (NN + KK - (dd - tt)), (2, 2), strides=(2, 2), \
-                                                          padding='same')(MD[gg + 3 * (dd - tt - 1)])
+                                                         padding='same')(MD[gg + 3 * (dd - tt - 1)])
         MD[gg + 3 * (dd - tt - 1) + 2] = concatenate([MD[gg + 3 * (dd - tt - 1) + 1], MD[gg - 2 * (dd - tt)]])
         MD[gg + 3 * (dd - tt - 1) + 3] = Con_Exp_Path(NN + KK - (dd - tt), 0.1 * (1 + np.fix((KK - dd + tt) / 2)), \
                                                       MD[gg + 3 * (dd - tt - 1) + 2])
@@ -366,7 +371,7 @@ def EU_Net_Segmentation(NN, KK, dd, Final_Act):
 
     for tt in np.arange(KK, dd, -1):
         MD[gg + 3 * (KK - tt) + 1] = Conv2DTranspose(2 ** (NN + tt - (dd + 1)), (2, 2), strides=(2, 2), \
-                                                      padding='same')(MD[gg + 3 * (KK - tt)])
+                                                     padding='same')(MD[gg + 3 * (KK - tt)])
         MD[gg + 3 * (KK - tt) + 2] = concatenate([MD[gg + 3 * (KK - tt) + 1], MD[2 * (tt - dd)]])
         MD[gg + 3 * (KK - tt) + 3] = Con_Exp_Path(NN + tt - (dd + 1), 0.1 * (1 + np.fix((tt - dd - 1) / 2)), \
                                                   MD[gg + 3 * (KK - tt) + 2])
@@ -379,6 +384,7 @@ def EU_Net_Segmentation(NN, KK, dd, Final_Act):
 
     model = Model(inputs=[MD[0]], outputs=[MD[gg + 1]], name="EU-Net")
     return model
+
 
 # if Final_Act == 'tanh':
 #     Pred_thresh = 0.01
@@ -736,7 +742,6 @@ def unet_3plus_2d(input_size, n_labels, filter_num_down, filter_num_skip='auto',
 
     else:
 
-
         OUT = CONV_output(X_decoder[0], n_labels, kernel_size=3,
                           activation=output_activation, name='{}_output_final'.format(name))
 
@@ -744,3 +749,751 @@ def unet_3plus_2d(input_size, n_labels, filter_num_down, filter_num_skip='auto',
 
     return model
 
+
+def EU_Net_Segmentation(NN, KK, dd, Final_Act, backbone=None):
+    if backbone == None:
+        NL = 9 + (KK + dd - 1) * 5  # No. of layers for EU-Net architecture
+        MD = [None] * (NL)  # EU_Net Layers combination
+        MD[0] = Input(input_size)
+        MD[1] = Lambda(lambda x: x / 255)(MD[0])
+        for tt in np.arange(0, KK):
+            MD[2 * (tt + 1)] = Con_Exp_Path(NN + tt, 0.1 * (1 + np.fix(tt / 2)), MD[2 * (tt) + 1])
+            MD[2 * (tt + 1) + 1] = MaxPooling2D((2, 2))(MD[2 * (tt + 1)])
+
+        gg = 2 * (KK + 1)  # e.g. for KK=3 & dd=1==>gg=8 or for KK=2 & dd=2==>gg=6
+        MD[gg] = Con_Exp_Path(NN + KK, 0.1 * (1 + np.fix((tt + 1) / 2)), MD[gg - 1])
+
+        for tt in np.arange(dd - 1, -1, -1):
+            MD[gg + 3 * (dd - tt - 1) + 1] = Conv2DTranspose(2 ** (NN + KK - (dd - tt)), \
+                                                             (2, 2), strides=(2, 2), \
+                                                             padding='same')(MD[gg + 3 * (dd - tt - 1)])
+            MD[gg + 3 * (dd - tt - 1) + 2] = concatenate([MD[gg + 3 * (dd - tt - 1) + 1], MD[gg - 2 * (dd - tt)]])
+            MD[gg + 3 * (dd - tt - 1) + 3] = Con_Exp_Path(NN + KK - (dd - tt), 0.1 * (1 + np.fix((KK - dd + tt) / 2)), \
+                                                          MD[gg + 3 * (dd - tt - 1) + 2])
+
+        gg += 3 * dd  # e.g. for KK=3 & dd=1 ==> gg=11 or for KK=2 & dd=2==>gg=12
+
+        for tt in np.arange(0, dd):
+            MD[gg + 2 * tt + 1] = MaxPooling2D((2, 2))(MD[gg + 2 * tt])
+            MD[gg + 2 * tt + 2] = Con_Exp_Path(NN + KK + (tt + 1 - dd), 0.1 * (1 + np.fix((KK - dd + tt + 1) / 2)), \
+                                               MD[gg + 2 * tt + 1])
+
+        gg += 2 * dd  # e.g. for KK=3 & dd=1 ==> gg=13 or for KK=2 & dd=2==>gg=16
+
+        for tt in np.arange(dd - 1, -1, -1):
+            MD[gg + 3 * (dd - tt - 1) + 1] = Conv2DTranspose(2 ** (NN + KK - (dd - tt)), (2, 2), strides=(2, 2), \
+                                                             padding='same')(MD[gg + 3 * (dd - tt - 1)])
+            MD[gg + 3 * (dd - tt - 1) + 2] = concatenate([MD[gg + 3 * (dd - tt - 1) + 1], MD[gg - 2 * (dd - tt)]])
+            MD[gg + 3 * (dd - tt - 1) + 3] = Con_Exp_Path(NN + KK - (dd - tt), 0.1 * (1 + np.fix((KK - dd + tt) / 2)), \
+                                                          MD[gg + 3 * (dd - tt - 1) + 2])
+
+        gg += 3 * dd  # e.g. for KK=3 & dd=1 ==> gg=16 or for KK=2 & dd=2==>gg=22
+
+        for tt in np.arange(KK, dd, -1):
+            MD[gg + 3 * (KK - tt) + 1] = Conv2DTranspose(2 ** (NN + tt - (dd + 1)), (2, 2), strides=(2, 2), \
+                                                         padding='same')(MD[gg + 3 * (KK - tt)])
+            MD[gg + 3 * (KK - tt) + 2] = concatenate([MD[gg + 3 * (KK - tt) + 1], MD[2 * (tt - dd)]])
+            MD[gg + 3 * (KK - tt) + 3] = Con_Exp_Path(NN + tt - (dd + 1), 0.1 * (1 + np.fix((tt - dd - 1) / 2)), \
+                                                      MD[gg + 3 * (KK - tt) + 2])
+        if gg != NL - 1:
+            gg += 3 * (KK - dd)
+
+        # MD[gg+1] = Conv2D(1,(1,1), activation='sigmoid')(MD[gg])
+        # MD[gg + 1] = Conv2D(1, (1, 1))(MD[gg])
+        # MD[gg + 1] = Activation(Final_Act)(MD[gg + 1])
+        if Final_Act == 'selu':
+            MD[gg + 1] = Conv2D(1, kernel_size=(1, 1), activation=Final_Act,
+                                kernel_initializer='lecun_normal')(MD[gg])
+        else:
+            MD[gg + 1] = Conv2D(1, kernel_size=(1, 1), activation=Final_Act)(MD[gg])
+
+        model = Model(inputs=[MD[0]], outputs=[MD[gg + 1]], name='EU-Net')
+    elif 'vgg' in backbone:
+        if KK > 4:
+            KK = 4
+        if dd > 4:
+            dd = 4
+        if dd == 0:
+            dd = 1
+        if backbone == 'vgg16':
+            inputs = Input(input_size)
+            vgg16 = keras.applications.VGG16(include_top=False,
+                                             weights="imagenet",
+                                             input_tensor=inputs)
+            xx = Lambda(lambda x: x / 255)(inputs)
+            if KK == 4 and dd == 4:
+                #### Contracting Path
+                c1 = vgg16.layers[1](xx)
+                c1 = vgg16.layers[2](c1)
+                c2 = vgg16.layers[3](c1)
+                c2 = vgg16.layers[4](c2)
+                c2 = vgg16.layers[5](c2)
+                c3 = vgg16.layers[6](c2)
+                c3 = vgg16.layers[7](c3)
+                c3 = vgg16.layers[8](c3)
+                c3 = vgg16.layers[9](c3)
+                c4 = vgg16.layers[10](c3)
+                c4 = vgg16.layers[11](c4)
+                c4 = vgg16.layers[12](c4)
+                c4 = vgg16.layers[13](c4)
+                c5 = vgg16.layers[14](c4)
+                c5 = vgg16.layers[15](c5)
+                c5 = vgg16.layers[16](c5)
+                c5 = vgg16.layers[17](c5)
+                #### Sub-Expanding Path
+                se1 = decoder_block(c5, c4, 512)
+                se2 = decoder_block(se1, c3, 256)
+                se3 = decoder_block(se2, c2, 128)
+                se4 = decoder_block(se3, c1, 64)
+                #### Sub-Contracting Path
+                sc1 = vgg16.layers[3](se4)
+                sc1 = vgg16.layers[4](sc1)
+                sc1 = vgg16.layers[5](sc1)
+                sc2 = vgg16.layers[6](sc1)
+                sc2 = vgg16.layers[7](sc2)
+                sc2 = vgg16.layers[8](sc2)
+                sc2 = vgg16.layers[9](sc2)
+                sc3 = vgg16.layers[10](sc2)
+                sc3 = vgg16.layers[11](sc3)
+                sc3 = vgg16.layers[12](sc3)
+                sc3 = vgg16.layers[13](sc3)
+                sc4 = vgg16.layers[14](sc3)
+                sc4 = vgg16.layers[15](sc4)
+                sc4 = vgg16.layers[16](sc4)
+                sc4 = vgg16.layers[17](sc4)
+                #### Expanding Path
+                e1 = decoder_block(sc4, sc3, 512)
+                e2 = decoder_block(e1, sc2, 256)
+                e3 = decoder_block(e2, sc1, 128)
+                e4 = decoder_block(e3, se4, 64)
+                dropout = Dropout(0.8)(e4)
+            elif KK == 4 and dd == 3:
+                #### Contracting Path
+                c1 = vgg16.layers[1](xx)
+                c1 = vgg16.layers[2](c1)
+                c2 = vgg16.layers[3](c1)
+                c2 = vgg16.layers[4](c2)
+                c2 = vgg16.layers[5](c2)
+                c3 = vgg16.layers[6](c2)
+                c3 = vgg16.layers[7](c3)
+                c3 = vgg16.layers[8](c3)
+                c3 = vgg16.layers[9](c3)
+                c4 = vgg16.layers[10](c3)
+                c4 = vgg16.layers[11](c4)
+                c4 = vgg16.layers[12](c4)
+                c4 = vgg16.layers[13](c4)
+                c5 = vgg16.layers[14](c4)
+                c5 = vgg16.layers[15](c5)
+                c5 = vgg16.layers[16](c5)
+                c5 = vgg16.layers[17](c5)
+                #### Sub-Expanding Path
+                se1 = decoder_block(c5, c4, 512)
+                se2 = decoder_block(se1, c3, 256)
+                se3 = decoder_block(se2, c2, 128)
+                #### Sub-Contracting Path
+                sc1 = vgg16.layers[6](se3)
+                sc1 = vgg16.layers[7](sc1)
+                sc1 = vgg16.layers[8](sc1)
+                sc1 = vgg16.layers[9](sc1)
+                sc2 = vgg16.layers[10](sc1)
+                sc2 = vgg16.layers[11](sc2)
+                sc2 = vgg16.layers[12](sc2)
+                sc2 = vgg16.layers[13](sc2)
+                sc3 = vgg16.layers[14](sc2)
+                sc3 = vgg16.layers[15](sc3)
+                sc3 = vgg16.layers[16](sc3)
+                sc3 = vgg16.layers[17](sc3)
+                #### Expanding Path
+                e1 = decoder_block(sc3, sc2, 512)
+                e2 = decoder_block(e1, sc1, 256)
+                e3 = decoder_block(e2, se3, 128)
+                e4 = decoder_block(e3, c1, 64)
+                dropout = Dropout(0.8)(e4)
+            elif KK == 4 and dd == 2:
+                #### Contracting Path
+                c1 = vgg16.layers[1](xx)
+                c1 = vgg16.layers[2](c1)
+                c2 = vgg16.layers[3](c1)
+                c2 = vgg16.layers[4](c2)
+                c2 = vgg16.layers[5](c2)
+                c3 = vgg16.layers[6](c2)
+                c3 = vgg16.layers[7](c3)
+                c3 = vgg16.layers[8](c3)
+                c3 = vgg16.layers[9](c3)
+                c4 = vgg16.layers[10](c3)
+                c4 = vgg16.layers[11](c4)
+                c4 = vgg16.layers[12](c4)
+                c4 = vgg16.layers[13](c4)
+                c5 = vgg16.layers[14](c4)
+                c5 = vgg16.layers[15](c5)
+                c5 = vgg16.layers[16](c5)
+                c5 = vgg16.layers[17](c5)
+                #### Sub-Expanding Path
+                se1 = decoder_block(c5, c4, 512)
+                se2 = decoder_block(se1, c3, 256)
+                #### Sub-Contracting Path
+                sc1 = vgg16.layers[10](se2)
+                sc1 = vgg16.layers[11](sc1)
+                sc1 = vgg16.layers[12](sc1)
+                sc1 = vgg16.layers[13](sc1)
+                sc2 = vgg16.layers[14](sc1)
+                sc2 = vgg16.layers[15](sc2)
+                sc2 = vgg16.layers[16](sc2)
+                sc2 = vgg16.layers[17](sc2)
+                #### Expanding Path
+                e1 = decoder_block(sc2, sc1, 512)
+                e2 = decoder_block(e1, se2, 256)
+                e3 = decoder_block(e2, c2, 128)
+                e4 = decoder_block(e3, c1, 64)
+                dropout = Dropout(0.8)(e4)
+            elif KK == 4 and dd == 1:
+                #### Contracting Path
+                c1 = vgg16.layers[1](xx)
+                c1 = vgg16.layers[2](c1)
+                c2 = vgg16.layers[3](c1)
+                c2 = vgg16.layers[4](c2)
+                c2 = vgg16.layers[5](c2)
+                c3 = vgg16.layers[6](c2)
+                c3 = vgg16.layers[7](c3)
+                c3 = vgg16.layers[8](c3)
+                c3 = vgg16.layers[9](c3)
+                c4 = vgg16.layers[10](c3)
+                c4 = vgg16.layers[11](c4)
+                c4 = vgg16.layers[12](c4)
+                c4 = vgg16.layers[13](c4)
+                c5 = vgg16.layers[14](c4)
+                c5 = vgg16.layers[15](c5)
+                c5 = vgg16.layers[16](c5)
+                c5 = vgg16.layers[17](c5)
+                #### Sub-Expanding Path
+                se1 = decoder_block(c5, c4, 512)
+                #### Sub-Contracting Path
+                sc1 = vgg16.layers[14](se1)
+                sc1 = vgg16.layers[15](sc1)
+                sc1 = vgg16.layers[16](sc1)
+                sc1 = vgg16.layers[17](sc1)
+                #### Expanding Path
+                e1 = decoder_block(sc1, se1, 512)
+                e2 = decoder_block(e1, c3, 256)
+                e3 = decoder_block(e2, c2, 128)
+                e4 = decoder_block(e3, c1, 64)
+                dropout = Dropout(0.5)(e4)
+            elif KK == 3 and dd == 3:
+                #### Contracting Path
+                c1 = vgg16.layers[1](xx)
+                c1 = vgg16.layers[2](c1)
+                c2 = vgg16.layers[3](c1)
+                c2 = vgg16.layers[4](c2)
+                c2 = vgg16.layers[5](c2)
+                c3 = vgg16.layers[6](c2)
+                c3 = vgg16.layers[7](c3)
+                c3 = vgg16.layers[8](c3)
+                c3 = vgg16.layers[9](c3)
+                c4 = vgg16.layers[10](c3)
+                c4 = vgg16.layers[11](c4)
+                c4 = vgg16.layers[12](c4)
+                c4 = vgg16.layers[13](c4)
+                #### Sub-Expanding Path
+                se1 = decoder_block(c4, c3, 256)
+                se2 = decoder_block(se1, c2, 128)
+                se3 = decoder_block(se2, c1, 64)
+                #### Sub-Contracting Path
+                sc1 = vgg16.layers[3](se3)
+                sc1 = vgg16.layers[4](sc1)
+                sc1 = vgg16.layers[5](sc1)
+                sc2 = vgg16.layers[6](sc1)
+                sc2 = vgg16.layers[7](sc2)
+                sc2 = vgg16.layers[8](sc2)
+                sc2 = vgg16.layers[9](sc2)
+                sc3 = vgg16.layers[10](sc2)
+                sc3 = vgg16.layers[11](sc3)
+                sc3 = vgg16.layers[12](sc3)
+                sc3 = vgg16.layers[13](sc3)
+                #### Expanding Path
+                e1 = decoder_block(sc3, sc2, 256)
+                e2 = decoder_block(e1, sc1, 128)
+                e3 = decoder_block(e2, se3, 64)
+                dropout = Dropout(0.8)(e3)
+            elif KK == 3 and dd == 2:
+                #### Contracting Path
+                c1 = vgg16.layers[1](xx)
+                c1 = vgg16.layers[2](c1)  # 256x512x64
+                c2 = vgg16.layers[3](c1)  # 128x256x64
+                c2 = vgg16.layers[4](c2)  # 128x256x128
+                c2 = vgg16.layers[5](c2)  # 128x256x128
+                c3 = vgg16.layers[6](c2)  # 64x128x128
+                c3 = vgg16.layers[7](c3)  # 64x128x256
+                c3 = vgg16.layers[8](c3)  # 64x128x256
+                c3 = vgg16.layers[9](c3)  # 64x128x256
+                c4 = vgg16.layers[10](c3)  # 32x64x256
+                c4 = vgg16.layers[11](c4)  # 32x64x512
+                c4 = vgg16.layers[12](c4)  # 32x64x512
+                c4 = vgg16.layers[13](c4)  # 32x64x512
+                #### Sub-Expanding Path
+                se1 = decoder_block(c4, c3, 256)  # 64x128x256
+                se2 = decoder_block(se1, c2, 128)  # 128x256x128
+                #### Sub-Contracting Path
+                sc1 = vgg16.layers[6](se2)  # 64x128x128
+                sc1 = vgg16.layers[7](sc1)  # 64x128x256
+                sc1 = vgg16.layers[8](sc1)  # 64x128x256
+                sc1 = vgg16.layers[9](sc1)  # 64x128x256
+                sc2 = vgg16.layers[10](sc1)  # 32x64x256
+                sc2 = vgg16.layers[11](sc2)  # 32x64x512
+                sc2 = vgg16.layers[12](sc2)  # 32x64x512
+                sc2 = vgg16.layers[13](sc2)  # 32x64x512
+                #### Expanding Path
+                e1 = decoder_block(sc2, sc1, 256)
+                e2 = decoder_block(e1, se2, 128)
+                e3 = decoder_block(e2, c1, 64)
+                dropout = Dropout(0.8)(e3)
+            elif KK == 3 and dd == 1:
+                #### Contracting Path
+                c1 = vgg16.layers[1](xx)
+                c1 = vgg16.layers[2](c1)  # 256x512x64
+                c2 = vgg16.layers[3](c1)  # 128x256x64
+                c2 = vgg16.layers[4](c2)  # 128x256x128
+                c2 = vgg16.layers[5](c2)  # 128x256x128
+                c3 = vgg16.layers[6](c2)  # 64x128x128
+                c3 = vgg16.layers[7](c3)  # 64x128x256
+                c3 = vgg16.layers[8](c3)  # 64x128x256
+                c3 = vgg16.layers[9](c3)  # 64x128x256
+                c4 = vgg16.layers[10](c3)  # 32x64x256
+                c4 = vgg16.layers[11](c4)  # 32x64x512
+                c4 = vgg16.layers[12](c4)  # 32x64x512
+                c4 = vgg16.layers[13](c4)  # 32x64x512
+                #### Sub-Expanding Path
+                se1 = decoder_block(c4, c3, 256)  # 64x128x256
+                #### Sub-Contracting Path
+                sc1 = vgg16.layers[10](se1)  # 32x64x256
+                sc1 = vgg16.layers[11](sc1)  # 32x64x512
+                sc1 = vgg16.layers[12](sc1)  # 32x64x512
+                sc1 = vgg16.layers[13](sc1)  # 32x64x512
+                #### Expanding Path
+                e1 = decoder_block(sc1, se1, 256)
+                e2 = decoder_block(e1, c2, 128)
+                e3 = decoder_block(e2, c1, 64)
+                dropout = Dropout(0.8)(e3)
+            elif KK == 2 and dd == 2:
+                #### Contracting Path
+                c1 = vgg16.layers[1](xx)
+                c1 = vgg16.layers[2](c1)  # 256x512x64
+                c2 = vgg16.layers[3](c1)  # 128x256x64
+                c2 = vgg16.layers[4](c2)  # 128x256x128
+                c2 = vgg16.layers[5](c2)  # 128x256x128
+                c3 = vgg16.layers[6](c2)  # 64x128x128
+                c3 = vgg16.layers[7](c3)  # 64x128x256
+                c3 = vgg16.layers[8](c3)  # 64x128x256
+                c3 = vgg16.layers[9](c3)  # 64x128x256
+                #### Sub-Expanding Path
+                se1 = decoder_block(c3, c2, 128)  # 128x256x128
+                se2 = decoder_block(se1, c1, 64)  # 256x512x64
+                #### Sub-Contracting Path
+                sc1 = vgg16.layers[3](se2)  # 128x256x64
+                sc1 = vgg16.layers[4](sc1)  # 128x256x128
+                sc1 = vgg16.layers[5](sc1)  # 128x256x128
+                sc2 = vgg16.layers[6](sc1)  # 64x128x128
+                sc2 = vgg16.layers[7](sc2)  # 64x128x256
+                sc2 = vgg16.layers[8](sc2)  # 64x128x256
+                sc2 = vgg16.layers[9](sc2)  # 64x128x256
+                #### Expanding Path
+                e1 = decoder_block(sc2, sc1, 128)  #
+                e2 = decoder_block(e1, se2, 64)
+                dropout = Dropout(0.8)(e2)
+            elif KK == 2 and dd == 1:
+                #### Contracting Path
+                c1 = vgg16.layers[1](xx)
+                c1 = vgg16.layers[2](c1)  # 256x512x64
+                c2 = vgg16.layers[3](c1)  # 128x256x64
+                c2 = vgg16.layers[4](c2)  # 128x256x128
+                c2 = vgg16.layers[5](c2)  # 128x256x128
+                c3 = vgg16.layers[6](c2)  # 64x128x128
+                c3 = vgg16.layers[7](c3)  # 64x128x256
+                c3 = vgg16.layers[8](c3)  # 64x128x256
+                c3 = vgg16.layers[9](c3)  # 64x128x256
+                #### Sub-Expanding Path
+                se1 = decoder_block(c3, c2, 128)  # 128x256x128
+                #### Sub-Contracting Path
+                sc1 = vgg16.layers[6](se1)  # 64x128x128
+                sc1 = vgg16.layers[7](sc1)  # 64x128x256
+                sc1 = vgg16.layers[8](sc1)  # 64x128x256
+                sc1 = vgg16.layers[9](sc1)  # 64x128x256
+                #### Expanding Path
+                e1 = decoder_block(sc1, se1, 128)  # 128x256x128
+                e2 = decoder_block(e1, c1, 64)  # 256x512x64
+                dropout = Dropout(0.8)(e2)
+            """ Output """
+            outputs = Conv2D(1, 1, padding="same", activation=Final_Act)(dropout)
+            model = Model(inputs, outputs, name='VGG16_EUNet{K}{d}'.format(K=KK, d=dd))
+        elif backbone == 'vgg19':
+            inputs = Input(input_size)
+            vgg19 = keras.applications.VGG19(include_top=False,
+                                             weights="imagenet",
+                                             input_tensor=inputs)
+            # xx = Lambda(lambda x: x/255)(inputs)
+            if KK == 4 and dd == 4:
+                #### Contracting Path
+                c1 = vgg19.layers[1].output  # (xx)
+                c1 = vgg19.layers[2](c1)
+                c2 = vgg19.layers[3](c1)
+                c2 = vgg19.layers[4](c2)
+                c2 = vgg19.layers[5](c2)
+                c3 = vgg19.layers[6](c2)
+                c3 = vgg19.layers[7](c3)
+                c3 = vgg19.layers[8](c3)
+                c3 = vgg19.layers[9](c3)
+                c3 = vgg19.layers[10](c3)
+                c4 = vgg19.layers[11](c3)
+                c4 = vgg19.layers[12](c4)
+                c4 = vgg19.layers[13](c4)
+                c4 = vgg19.layers[14](c4)
+                c4 = vgg19.layers[15](c4)
+                c5 = vgg19.layers[16](c4)
+                c5 = vgg19.layers[17](c5)
+                c5 = vgg19.layers[18](c5)
+                c5 = vgg19.layers[19](c5)
+                c5 = vgg19.layers[20](c5)
+                #### Sub-Expanding Path
+                se1 = decoder_block(c5, c4, 512)
+                se2 = decoder_block(se1, c3, 256)
+                se3 = decoder_block(se2, c2, 128)
+                se4 = decoder_block(se3, c1, 64)
+                #### Sub-Contracting Path
+                sc1 = vgg19.layers[3](se4)
+                sc1 = vgg19.layers[4](sc1)
+                sc1 = vgg19.layers[5](sc1)
+                sc2 = vgg19.layers[6](sc1)  # maxpooling
+                sc2 = vgg19.layers[7](sc2)
+                sc2 = vgg19.layers[8](sc2)
+                sc2 = vgg19.layers[9](sc2)
+                sc2 = vgg19.layers[10](sc2)
+                sc3 = vgg19.layers[11](sc2)  # maxpooling
+                sc3 = vgg19.layers[12](sc3)
+                sc3 = vgg19.layers[13](sc3)
+                sc3 = vgg19.layers[14](sc3)
+                sc3 = vgg19.layers[15](sc3)
+                sc4 = vgg19.layers[16](sc3)  # maxpooling
+                sc4 = vgg19.layers[17](sc4)
+                sc4 = vgg19.layers[18](sc4)
+                sc4 = vgg19.layers[19](sc4)
+                sc4 = vgg19.layers[20](sc4)
+                #### Expanding Path
+                e1 = decoder_block(sc4, sc3, 512)
+                e2 = decoder_block(e1, sc2, 256)
+                e3 = decoder_block(e2, sc1, 128)
+                e4 = decoder_block(e3, se4, 64)
+                dropout = Dropout(0.8)(e4)
+            elif KK == 4 and dd == 3:
+                #### Contracting Path
+                c1 = vgg19.layers[1].output  # (xx)
+                c1 = vgg19.layers[2](c1)
+                c2 = vgg19.layers[3](c1)
+                c2 = vgg19.layers[4](c2)
+                c2 = vgg19.layers[5](c2)
+                c3 = vgg19.layers[6](c2)
+                c3 = vgg19.layers[7](c3)
+                c3 = vgg19.layers[8](c3)
+                c3 = vgg19.layers[9](c3)
+                c3 = vgg19.layers[10](c3)
+                c4 = vgg19.layers[11](c3)
+                c4 = vgg19.layers[12](c4)
+                c4 = vgg19.layers[13](c4)
+                c4 = vgg19.layers[14](c4)
+                c4 = vgg19.layers[15](c4)
+                c5 = vgg19.layers[16](c4)
+                c5 = vgg19.layers[17](c5)
+                c5 = vgg19.layers[18](c5)
+                c5 = vgg19.layers[19](c5)
+                c5 = vgg19.layers[20](c5)
+                #### Sub-Expanding Path
+                se1 = decoder_block(c5, c4, 512)
+                se2 = decoder_block(se1, c3, 256)
+                se3 = decoder_block(se2, c2, 128)
+                #### Sub-Contracting Path
+                sc1 = vgg19.layers[6](se3)
+                sc1 = vgg19.layers[7](sc1)
+                sc1 = vgg19.layers[8](sc1)
+                sc1 = vgg19.layers[9](sc1)
+                sc1 = vgg19.layers[10](sc1)
+                sc2 = vgg19.layers[11](sc1)
+                sc2 = vgg19.layers[12](sc2)
+                sc2 = vgg19.layers[13](sc2)
+                sc2 = vgg19.layers[14](sc2)
+                sc2 = vgg19.layers[15](sc2)
+                sc3 = vgg19.layers[16](sc2)
+                sc3 = vgg19.layers[17](sc3)
+                sc3 = vgg19.layers[18](sc3)
+                sc3 = vgg19.layers[19](sc3)
+                sc3 = vgg19.layers[20](sc3)
+                #### Expanding Path
+                e1 = decoder_block(sc3, sc2, 512)
+                e2 = decoder_block(e1, sc1, 256)
+                e3 = decoder_block(e2, se3, 128)
+                e4 = decoder_block(e3, c1, 64)
+                dropout = Dropout(0.8)(e4)
+            elif KK == 4 and dd == 2:
+                #### Contracting Path
+                c1 = vgg19.layers[1].output  # (xx)
+                c1 = vgg19.layers[2](c1)
+                c2 = vgg19.layers[3](c1)
+                c2 = vgg19.layers[4](c2)
+                c2 = vgg19.layers[5](c2)
+                c3 = vgg19.layers[6](c2)
+                c3 = vgg19.layers[7](c3)
+                c3 = vgg19.layers[8](c3)
+                c3 = vgg19.layers[9](c3)
+                c3 = vgg19.layers[10](c3)
+                c4 = vgg19.layers[11](c3)
+                c4 = vgg19.layers[12](c4)
+                c4 = vgg19.layers[13](c4)
+                c4 = vgg19.layers[14](c4)
+                c4 = vgg19.layers[15](c4)
+                c5 = vgg19.layers[16](c4)
+                c5 = vgg19.layers[17](c5)
+                c5 = vgg19.layers[18](c5)
+                c5 = vgg19.layers[19](c5)
+                c5 = vgg19.layers[20](c5)
+                #### Sub-Expanding Path
+                se1 = decoder_block(c5, c4, 512)
+                se2 = decoder_block(se1, c3, 256)
+                #### Sub-Contracting Path
+                sc1 = vgg19.layers[11](se2)
+                sc1 = vgg19.layers[12](sc1)
+                sc1 = vgg19.layers[13](sc1)
+                sc1 = vgg19.layers[14](sc1)
+                sc1 = vgg19.layers[15](sc1)
+                sc2 = vgg19.layers[16](sc1)
+                sc2 = vgg19.layers[17](sc2)
+                sc2 = vgg19.layers[18](sc2)
+                sc2 = vgg19.layers[19](sc2)
+                sc2 = vgg19.layers[20](sc2)
+                #### Expanding Path
+                e1 = decoder_block(sc2, sc1, 512)
+                e2 = decoder_block(e1, se2, 256)
+                e3 = decoder_block(e2, c2, 128)
+                e4 = decoder_block(e3, c1, 64)
+                dropout = Dropout(0.8)(e4)
+            elif KK == 4 and dd == 1:
+                #### Contracting Path
+                c1 = vgg19.layers[1](inputs)
+                c1 = vgg19.layers[2](c1)
+                c2 = vgg19.layers[3](c1)
+                c2 = vgg19.layers[4](c2)
+                c2 = vgg19.layers[5](c2)
+                c3 = vgg19.layers[6](c2)
+                c3 = vgg19.layers[7](c3)
+                c3 = vgg19.layers[8](c3)
+                c3 = vgg19.layers[9](c3)
+                c3 = vgg19.layers[10](c3)
+                c4 = vgg19.layers[11](c3)
+                c4 = vgg19.layers[12](c4)
+                c4 = vgg19.layers[13](c4)
+                c4 = vgg19.layers[14](c4)
+                c4 = vgg19.layers[15](c4)
+                c5 = vgg19.layers[16](c4)
+                c5 = vgg19.layers[17](c5)
+                c5 = vgg19.layers[18](c5)
+                c5 = vgg19.layers[19](c5)
+                c5 = vgg19.layers[20](c5)
+                #### Sub-Expanding Path
+                se1 = decoder_block(c5, c4, 512)
+                #### Sub-Contracting Path
+                sc1 = vgg19.layers[16](se1)
+                sc1 = vgg19.layers[17](sc1)
+                sc1 = vgg19.layers[18](sc1)
+                sc1 = vgg19.layers[19](sc1)
+                sc1 = vgg19.layers[20](sc1)
+                #### Expanding Path
+                e1 = decoder_block(sc1, se1, 512)
+                e2 = decoder_block(e1, c3, 256)
+                e3 = decoder_block(e2, c2, 128)
+                e4 = decoder_block(e3, c1, 64)
+                dropout = Dropout(0.5)(e4)
+            elif KK == 3 and dd == 3:
+                #### Contracting Path
+                c1 = vgg19.layers[1].output  # (xx)
+                c1 = vgg19.layers[2](c1)
+                c2 = vgg19.layers[3](c1)
+                c2 = vgg19.layers[4](c2)
+                c2 = vgg19.layers[5](c2)
+                c3 = vgg19.layers[6](c2)
+                c3 = vgg19.layers[7](c3)
+                c3 = vgg19.layers[8](c3)
+                c3 = vgg19.layers[9](c3)
+                c3 = vgg19.layers[10](c3)
+                c4 = vgg19.layers[11](c3)
+                c4 = vgg19.layers[12](c4)
+                c4 = vgg19.layers[13](c4)
+                c4 = vgg19.layers[14](c4)
+                c4 = vgg19.layers[15](c4)
+                #### Sub-Expanding Path
+                se1 = decoder_block(c4, c3, 256)
+                se2 = decoder_block(se1, c2, 128)
+                se3 = decoder_block(se2, c1, 64)
+                #### Sub-Contracting Path
+                sc1 = vgg19.layers[3](se3)
+                sc1 = vgg19.layers[4](sc1)
+                sc1 = vgg19.layers[5](sc1)
+                sc2 = vgg19.layers[6](sc1)  # maxpooling
+                sc2 = vgg19.layers[7](sc2)
+                sc2 = vgg19.layers[8](sc2)
+                sc2 = vgg19.layers[9](sc2)
+                sc2 = vgg19.layers[10](sc2)
+                sc3 = vgg19.layers[11](sc2)  # maxpooling
+                sc3 = vgg19.layers[12](sc3)
+                sc3 = vgg19.layers[13](sc3)
+                sc3 = vgg19.layers[14](sc3)
+                sc3 = vgg19.layers[15](sc3)
+                #### Expanding Path
+                e1 = decoder_block(sc3, sc2, 256)
+                e2 = decoder_block(e1, sc1, 128)
+                e3 = decoder_block(e2, se3, 64)
+                dropout = Dropout(0.8)(e3)
+            elif KK == 3 and dd == 2:
+                #### Contracting Path
+                c1 = vgg19.layers[1].output  # (xx)
+                c1 = vgg19.layers[2](c1)
+                c2 = vgg19.layers[3](c1)
+                c2 = vgg19.layers[4](c2)
+                c2 = vgg19.layers[5](c2)
+                c3 = vgg19.layers[6](c2)
+                c3 = vgg19.layers[7](c3)
+                c3 = vgg19.layers[8](c3)
+                c3 = vgg19.layers[9](c3)
+                c3 = vgg19.layers[10](c3)
+                c4 = vgg19.layers[11](c3)
+                c4 = vgg19.layers[12](c4)
+                c4 = vgg19.layers[13](c4)
+                c4 = vgg19.layers[14](c4)
+                c4 = vgg19.layers[15](c4)
+                #### Sub-Expanding Path
+                se1 = decoder_block(c4, c3, 256)  # 64x128x256
+                se2 = decoder_block(se1, c2, 128)  # 128x256x128
+                #### Sub-Contracting Path
+                sc1 = vgg19.layers[6](se2)  # 64x128x128
+                sc1 = vgg19.layers[7](sc1)  # 64x128x256
+                sc1 = vgg19.layers[8](sc1)  # 64x128x256
+                sc1 = vgg19.layers[9](sc1)  # 64x128x256
+                sc1 = vgg19.layers[10](sc1)  # 32x64x256
+                sc2 = vgg19.layers[11](sc1)  # 32x64x512
+                sc2 = vgg19.layers[12](sc2)  # 32x64x512
+                sc2 = vgg19.layers[13](sc2)  # 32x64x512
+                sc2 = vgg19.layers[14](sc2)
+                sc2 = vgg19.layers[15](sc2)
+                #### Expanding Path
+                e1 = decoder_block(sc2, sc1, 256)
+                e2 = decoder_block(e1, se2, 128)
+                e3 = decoder_block(e2, c1, 64)
+                dropout = Dropout(0.5)(e3)
+            elif KK == 3 and dd == 1:
+                #### Contracting Path
+                c1 = vgg19.layers[1].output  # (xx)
+                c1 = vgg19.layers[2](c1)
+                c2 = vgg19.layers[3](c1)
+                c2 = vgg19.layers[4](c2)
+                c2 = vgg19.layers[5](c2)
+                c3 = vgg19.layers[6](c2)
+                c3 = vgg19.layers[7](c3)
+                c3 = vgg19.layers[8](c3)
+                c3 = vgg19.layers[9](c3)
+                c3 = vgg19.layers[10](c3)
+                c4 = vgg19.layers[11](c3)
+                c4 = vgg19.layers[12](c4)
+                c4 = vgg19.layers[13](c4)
+                c4 = vgg19.layers[14](c4)
+                c4 = vgg19.layers[15](c4)
+                #### Sub-Expanding Path
+                se1 = decoder_block(c4, c3, 256)  # 64x128x256
+                #### Sub-Contracting Path
+                sc1 = vgg19.layers[11](se1)  # 32x64x256
+                sc1 = vgg19.layers[12](sc1)  # 32x64x512
+                sc1 = vgg19.layers[13](sc1)  # 32x64x512
+                sc1 = vgg19.layers[14](sc1)  # 32x64x512
+                sc1 = vgg19.layers[15](sc1)  # 32x64x512
+                #### Expanding Path
+                e1 = decoder_block(sc1, se1, 256)
+                e2 = decoder_block(e1, c2, 128)
+                e3 = decoder_block(e2, c1, 64)
+                dropout = Dropout(0.8)(e3)
+            elif KK == 2 and dd == 2:
+                #### Contracting Path
+                c1 = vgg19.layers[1].output  # (xx)
+                c1 = vgg19.layers[2](c1)
+                c2 = vgg19.layers[3](c1)
+                c2 = vgg19.layers[4](c2)
+                c2 = vgg19.layers[5](c2)
+                c3 = vgg19.layers[6](c2)
+                c3 = vgg19.layers[7](c3)
+                c3 = vgg19.layers[8](c3)
+                c3 = vgg19.layers[9](c3)
+                c3 = vgg19.layers[10](c3)
+                #### Sub-Expanding Path
+                se1 = decoder_block(c3, c2, 128)  # 128x256x128
+                se2 = decoder_block(se1, c1, 64)  # 256x512x64
+                #### Sub-Contracting Path
+                sc1 = vgg19.layers[3](se2)  # 128x256x64
+                sc1 = vgg19.layers[4](sc1)  # 128x256x128
+                sc1 = vgg19.layers[5](sc1)  # 128x256x128
+                sc2 = vgg19.layers[6](sc1)  # 64x128x128
+                sc2 = vgg19.layers[7](sc2)  # 64x128x256
+                sc2 = vgg19.layers[8](sc2)  # 64x128x256
+                sc2 = vgg19.layers[9](sc2)  # 64x128x256
+                sc2 = vgg19.layers[10](sc2)  # 64x128x256
+                #### Expanding Path
+                e1 = decoder_block(sc2, sc1, 128)  #
+                e2 = decoder_block(e1, se2, 64)
+                dropout = Dropout(0.8)(e2)
+            elif KK == 2 and dd == 1:
+                #### Contracting Path
+                c1 = vgg19.layers[1].output  # (xx)
+                c1 = vgg19.layers[2](c1)
+                c2 = vgg19.layers[3](c1)
+                c2 = vgg19.layers[4](c2)
+                c2 = vgg19.layers[5](c2)
+                c3 = vgg19.layers[6](c2)
+                c3 = vgg19.layers[7](c3)
+                c3 = vgg19.layers[8](c3)
+                c3 = vgg19.layers[9](c3)
+                c3 = vgg19.layers[10](c3)
+                #### Sub-Expanding Path
+                se1 = decoder_block(c3, c2, 128)  # 128x256x128
+                #### Sub-Contracting Path
+                sc1 = vgg19.layers[6](se1)  # 64x128x128
+                sc1 = vgg19.layers[7](sc1)  # 64x128x256
+                sc1 = vgg19.layers[8](sc1)  # 64x128x256
+                sc1 = vgg19.layers[9](sc1)  # 64x128x256
+                sc1 = vgg19.layers[10](sc1)
+                #### Expanding Path
+                e1 = decoder_block(sc1, se1, 128)  # 128x256x128
+                e2 = decoder_block(e1, c1, 64)  # 256x512x64
+                dropout = Dropout(0.8)(e2)
+            """ Output """
+            outputs = Conv2D(1, 1, padding="same", activation=Final_Act)(dropout)
+            model = Model(inputs, outputs, name='VGG19_EUNet{K}{d}'.format(K=KK, d=dd))
+
+    # elif 'ResNet' in backbone:
+    #     if backbone =='ResNet50':
+    #         inputs = Input(input_size)
+    #         resnet50 = keras.applications.resnet.ResNet50(include_top=False,
+    #                                          weights="imagenet",
+    #                                          input_tensor=inputs)
+    #         xx = Lambda(lambda x: x/255)(inputs)
+    #         """ Output """
+    #         outputs = Conv2D(1, 1, padding="same", activation=Final_Act)(dropout)
+    #         model = Model(inputs, outputs, name='ResNet50_EUNet{K}{d}'.format(K=KK,d=dd))
+    #     elif backbone =='ResNet101':
+    #         resnet101 = keras.applications.resnet.ResNet101(include_top=False,
+    #                                          weights="imagenet",
+    #                                          input_tensor=inputs)
+    #         xx = Lambda(lambda x: x/255)(inputs)
+    #         """ Output """
+    #         outputs = Conv2D(1, 1, padding="same", activation=Final_Act)(dropout)
+    #         model = Model(inputs, outputs, name='ResNet101_EUNet{K}{d}'.format(K=KK,d=dd))
+    #     elif backbone =='ResNet152':
+    #         resnet152 = keras.applications.resnet.ResNet152(include_top=False,
+    #                                          weights="imagenet",
+    #                                          input_tensor=inputs)
+    #         xx = Lambda(lambda x: x/255)(inputs)
+    #         """ Output """
+    #         outputs = Conv2D(1, 1, padding="same", activation=Final_Act)(dropout)
+    #         model = Model(inputs, outputs, name='ResNet152__EUNet{K}{d}'.format(K=KK,d=dd))
+    return model

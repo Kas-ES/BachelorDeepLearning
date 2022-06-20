@@ -1,3 +1,4 @@
+Model: "VGG19_U-Net"
 __________________________________________________________________________________________________
  Layer (type)                   Output Shape         Param #     Connected to                     
 ==================================================================================================
@@ -49,145 +50,113 @@ ________________________________________________________________________________
                                                                                                   
  block5_conv4 (Conv2D)          (None, 16, 16, 512)  2359808     ['block5_conv3[0][0]']           
                                                                                                   
- block5_pool (MaxPooling2D)     (None, 8, 8, 512)    0           ['block5_conv4[0][0]']           
+ conv2d_transpose (Conv2DTransp  (None, 32, 32, 512)  1049088    ['block5_conv4[0][0]']           
+ ose)                                                                                             
                                                                                                   
- center_block1_conv (Conv2D)    (None, 8, 8, 512)    2359296     ['block5_pool[0][0]']            
+ concatenate (Concatenate)      (None, 32, 32, 1024  0           ['conv2d_transpose[0][0]',       
+                                )                                 'block4_conv4[0][0]']           
                                                                                                   
- center_block1_bn (BatchNormali  (None, 8, 8, 512)   2048        ['center_block1_conv[0][0]']     
- zation)                                                                                          
+ conv2d (Conv2D)                (None, 32, 32, 512)  4719104     ['concatenate[0][0]']            
                                                                                                   
- center_block1_relu (Activation  (None, 8, 8, 512)   0           ['center_block1_bn[0][0]']       
- )                                                                                                
+ batch_normalization (BatchNorm  (None, 32, 32, 512)  2048       ['conv2d[0][0]']                 
+ alization)                                                                                       
                                                                                                   
- center_block2_conv (Conv2D)    (None, 8, 8, 512)    2359296     ['center_block1_relu[0][0]']     
+ activation (Activation)        (None, 32, 32, 512)  0           ['batch_normalization[0][0]']    
                                                                                                   
- center_block2_bn (BatchNormali  (None, 8, 8, 512)   2048        ['center_block2_conv[0][0]']     
- zation)                                                                                          
+ conv2d_1 (Conv2D)              (None, 32, 32, 512)  2359808     ['activation[0][0]']             
                                                                                                   
- center_block2_relu (Activation  (None, 8, 8, 512)   0           ['center_block2_bn[0][0]']       
- )                                                                                                
+ batch_normalization_1 (BatchNo  (None, 32, 32, 512)  2048       ['conv2d_1[0][0]']               
+ rmalization)                                                                                     
                                                                                                   
- decoder_stage0_upsampling (UpS  (None, 16, 16, 512)  0          ['center_block2_relu[0][0]']     
- ampling2D)                                                                                       
+ activation_1 (Activation)      (None, 32, 32, 512)  0           ['batch_normalization_1[0][0]']  
                                                                                                   
- decoder_stage0_concat (Concate  (None, 16, 16, 1024  0          ['decoder_stage0_upsampling[0][0]
- nate)                          )                                ',                               
-                                                                  'block5_conv4[0][0]']           
+ dropout (Dropout)              (None, 32, 32, 512)  0           ['activation_1[0][0]']           
                                                                                                   
- decoder_stage0a_conv (Conv2D)  (None, 16, 16, 256)  2359296     ['decoder_stage0_concat[0][0]']  
+ conv2d_transpose_1 (Conv2DTran  (None, 64, 64, 256)  524544     ['dropout[0][0]']                
+ spose)                                                                                           
                                                                                                   
- decoder_stage0a_bn (BatchNorma  (None, 16, 16, 256)  1024       ['decoder_stage0a_conv[0][0]']   
- lization)                                                                                        
-                                                                                                  
- decoder_stage0a_relu (Activati  (None, 16, 16, 256)  0          ['decoder_stage0a_bn[0][0]']     
- on)                                                                                              
-                                                                                                  
- decoder_stage0b_conv (Conv2D)  (None, 16, 16, 256)  589824      ['decoder_stage0a_relu[0][0]']   
-                                                                                                  
- decoder_stage0b_bn (BatchNorma  (None, 16, 16, 256)  1024       ['decoder_stage0b_conv[0][0]']   
- lization)                                                                                        
-                                                                                                  
- decoder_stage0b_relu (Activati  (None, 16, 16, 256)  0          ['decoder_stage0b_bn[0][0]']     
- on)                                                                                              
-                                                                                                  
- decoder_stage1_upsampling (UpS  (None, 32, 32, 256)  0          ['decoder_stage0b_relu[0][0]']   
- ampling2D)                                                                                       
-                                                                                                  
- decoder_stage1_concat (Concate  (None, 32, 32, 768)  0          ['decoder_stage1_upsampling[0][0]
- nate)                                                           ',                               
-                                                                  'block4_conv4[0][0]']           
-                                                                                                  
- decoder_stage1a_conv (Conv2D)  (None, 32, 32, 128)  884736      ['decoder_stage1_concat[0][0]']  
-                                                                                                  
- decoder_stage1a_bn (BatchNorma  (None, 32, 32, 128)  512        ['decoder_stage1a_conv[0][0]']   
- lization)                                                                                        
-                                                                                                  
- decoder_stage1a_relu (Activati  (None, 32, 32, 128)  0          ['decoder_stage1a_bn[0][0]']     
- on)                                                                                              
-                                                                                                  
- decoder_stage1b_conv (Conv2D)  (None, 32, 32, 128)  147456      ['decoder_stage1a_relu[0][0]']   
-                                                                                                  
- decoder_stage1b_bn (BatchNorma  (None, 32, 32, 128)  512        ['decoder_stage1b_conv[0][0]']   
- lization)                                                                                        
-                                                                                                  
- decoder_stage1b_relu (Activati  (None, 32, 32, 128)  0          ['decoder_stage1b_bn[0][0]']     
- on)                                                                                              
-                                                                                                  
- decoder_stage2_upsampling (UpS  (None, 64, 64, 128)  0          ['decoder_stage1b_relu[0][0]']   
- ampling2D)                                                                                       
-                                                                                                  
- decoder_stage2_concat (Concate  (None, 64, 64, 384)  0          ['decoder_stage2_upsampling[0][0]
- nate)                                                           ',                               
+ concatenate_1 (Concatenate)    (None, 64, 64, 512)  0           ['conv2d_transpose_1[0][0]',     
                                                                   'block3_conv4[0][0]']           
                                                                                                   
- decoder_stage2a_conv (Conv2D)  (None, 64, 64, 64)   221184      ['decoder_stage2_concat[0][0]']  
+ conv2d_2 (Conv2D)              (None, 64, 64, 256)  1179904     ['concatenate_1[0][0]']          
                                                                                                   
- decoder_stage2a_bn (BatchNorma  (None, 64, 64, 64)  256         ['decoder_stage2a_conv[0][0]']   
- lization)                                                                                        
+ batch_normalization_2 (BatchNo  (None, 64, 64, 256)  1024       ['conv2d_2[0][0]']               
+ rmalization)                                                                                     
                                                                                                   
- decoder_stage2a_relu (Activati  (None, 64, 64, 64)  0           ['decoder_stage2a_bn[0][0]']     
- on)                                                                                              
+ activation_2 (Activation)      (None, 64, 64, 256)  0           ['batch_normalization_2[0][0]']  
                                                                                                   
- decoder_stage2b_conv (Conv2D)  (None, 64, 64, 64)   36864       ['decoder_stage2a_relu[0][0]']   
+ conv2d_3 (Conv2D)              (None, 64, 64, 256)  590080      ['activation_2[0][0]']           
                                                                                                   
- decoder_stage2b_bn (BatchNorma  (None, 64, 64, 64)  256         ['decoder_stage2b_conv[0][0]']   
- lization)                                                                                        
+ batch_normalization_3 (BatchNo  (None, 64, 64, 256)  1024       ['conv2d_3[0][0]']               
+ rmalization)                                                                                     
                                                                                                   
- decoder_stage2b_relu (Activati  (None, 64, 64, 64)  0           ['decoder_stage2b_bn[0][0]']     
- on)                                                                                              
+ activation_3 (Activation)      (None, 64, 64, 256)  0           ['batch_normalization_3[0][0]']  
                                                                                                   
- decoder_stage3_upsampling (UpS  (None, 128, 128, 64  0          ['decoder_stage2b_relu[0][0]']   
- ampling2D)                     )                                                                 
+ dropout_1 (Dropout)            (None, 64, 64, 256)  0           ['activation_3[0][0]']           
                                                                                                   
- decoder_stage3_concat (Concate  (None, 128, 128, 19  0          ['decoder_stage3_upsampling[0][0]
- nate)                          2)                               ',                               
-                                                                  'block2_conv2[0][0]']           
+ conv2d_transpose_2 (Conv2DTran  (None, 128, 128, 12  131200     ['dropout_1[0][0]']              
+ spose)                         8)                                                                
                                                                                                   
- decoder_stage3a_conv (Conv2D)  (None, 128, 128, 32  55296       ['decoder_stage3_concat[0][0]']  
+ concatenate_2 (Concatenate)    (None, 128, 128, 25  0           ['conv2d_transpose_2[0][0]',     
+                                6)                                'block2_conv2[0][0]']           
+                                                                                                  
+ conv2d_4 (Conv2D)              (None, 128, 128, 12  295040      ['concatenate_2[0][0]']          
+                                8)                                                                
+                                                                                                  
+ batch_normalization_4 (BatchNo  (None, 128, 128, 12  512        ['conv2d_4[0][0]']               
+ rmalization)                   8)                                                                
+                                                                                                  
+ activation_4 (Activation)      (None, 128, 128, 12  0           ['batch_normalization_4[0][0]']  
+                                8)                                                                
+                                                                                                  
+ conv2d_5 (Conv2D)              (None, 128, 128, 12  147584      ['activation_4[0][0]']           
+                                8)                                                                
+                                                                                                  
+ batch_normalization_5 (BatchNo  (None, 128, 128, 12  512        ['conv2d_5[0][0]']               
+ rmalization)                   8)                                                                
+                                                                                                  
+ activation_5 (Activation)      (None, 128, 128, 12  0           ['batch_normalization_5[0][0]']  
+                                8)                                                                
+                                                                                                  
+ dropout_2 (Dropout)            (None, 128, 128, 12  0           ['activation_5[0][0]']           
+                                8)                                                                
+                                                                                                  
+ conv2d_transpose_3 (Conv2DTran  (None, 256, 256, 64  32832      ['dropout_2[0][0]']              
+ spose)                         )                                                                 
+                                                                                                  
+ concatenate_3 (Concatenate)    (None, 256, 256, 12  0           ['conv2d_transpose_3[0][0]',     
+                                8)                                'block1_conv2[0][0]']           
+                                                                                                  
+ conv2d_6 (Conv2D)              (None, 256, 256, 64  73792       ['concatenate_3[0][0]']          
                                 )                                                                 
                                                                                                   
- decoder_stage3a_bn (BatchNorma  (None, 128, 128, 32  128        ['decoder_stage3a_conv[0][0]']   
- lization)                      )                                                                 
+ batch_normalization_6 (BatchNo  (None, 256, 256, 64  256        ['conv2d_6[0][0]']               
+ rmalization)                   )                                                                 
                                                                                                   
- decoder_stage3a_relu (Activati  (None, 128, 128, 32  0          ['decoder_stage3a_bn[0][0]']     
- on)                            )                                                                 
-                                                                                                  
- decoder_stage3b_conv (Conv2D)  (None, 128, 128, 32  9216        ['decoder_stage3a_relu[0][0]']   
+ activation_6 (Activation)      (None, 256, 256, 64  0           ['batch_normalization_6[0][0]']  
                                 )                                                                 
                                                                                                   
- decoder_stage3b_bn (BatchNorma  (None, 128, 128, 32  128        ['decoder_stage3b_conv[0][0]']   
- lization)                      )                                                                 
-                                                                                                  
- decoder_stage3b_relu (Activati  (None, 128, 128, 32  0          ['decoder_stage3b_bn[0][0]']     
- on)                            )                                                                 
-                                                                                                  
- decoder_stage4_upsampling (UpS  (None, 256, 256, 32  0          ['decoder_stage3b_relu[0][0]']   
- ampling2D)                     )                                                                 
-                                                                                                  
- decoder_stage4a_conv (Conv2D)  (None, 256, 256, 16  4608        ['decoder_stage4_upsampling[0][0]
-                                )                                ']                               
-                                                                                                  
- decoder_stage4a_bn (BatchNorma  (None, 256, 256, 16  64         ['decoder_stage4a_conv[0][0]']   
- lization)                      )                                                                 
-                                                                                                  
- decoder_stage4a_relu (Activati  (None, 256, 256, 16  0          ['decoder_stage4a_bn[0][0]']     
- on)                            )                                                                 
-                                                                                                  
- decoder_stage4b_conv (Conv2D)  (None, 256, 256, 16  2304        ['decoder_stage4a_relu[0][0]']   
+ conv2d_7 (Conv2D)              (None, 256, 256, 64  36928       ['activation_6[0][0]']           
                                 )                                                                 
                                                                                                   
- decoder_stage4b_bn (BatchNorma  (None, 256, 256, 16  64         ['decoder_stage4b_conv[0][0]']   
- lization)                      )                                                                 
+ batch_normalization_7 (BatchNo  (None, 256, 256, 64  256        ['conv2d_7[0][0]']               
+ rmalization)                   )                                                                 
                                                                                                   
- decoder_stage4b_relu (Activati  (None, 256, 256, 16  0          ['decoder_stage4b_bn[0][0]']     
- on)                            )                                                                 
+ activation_7 (Activation)      (None, 256, 256, 64  0           ['batch_normalization_7[0][0]']  
+                                )                                                                 
                                                                                                   
- final_conv (Conv2D)            (None, 256, 256, 1)  145         ['decoder_stage4b_relu[0][0]']   
+ dropout_3 (Dropout)            (None, 256, 256, 64  0           ['activation_7[0][0]']           
+                                )                                                                 
                                                                                                   
- sigmoid (Activation)           (None, 256, 256, 1)  0           ['final_conv[0][0]']             
+ dropout_4 (Dropout)            (None, 256, 256, 64  0           ['dropout_3[0][0]']              
+                                )                                                                 
+                                                                                                  
+ conv2d_8 (Conv2D)              (None, 256, 256, 1)  65          ['dropout_4[0][0]']              
                                                                                                   
 ==================================================================================================
-Total params: 29,061,969
-Trainable params: 29,057,937
-Non-trainable params: 4,032
+Total params: 31,172,033
+Trainable params: 31,168,193
+Non-trainable params: 3,840
 __________________________________________________________________________________________________
+
+Process finished with exit code 0
