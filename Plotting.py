@@ -2,7 +2,8 @@ import os
 
 import numpy as np
 from cv2 import cv2
-from sklearn.metrics import precision_recall_curve, average_precision_score
+from sklearn.metrics import precision_recall_curve, average_precision_score, ConfusionMatrixDisplay, \
+    classification_report
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 os.environ['CUDA_VISIBLE_DEVICES'] = '0'
@@ -189,3 +190,16 @@ def imageVisualiaziton(model, dataframe, label, IMG_HEIGHT, IMG_WIDTH):
     # plt.imshow(np.squeeze(pred) > .5)
     # plt.title(label + ' Prediction')
     # plt.show()
+
+def confusionMatrixAndClasificaitonReport(Y_pred, ground_truth, model_name):
+    y_pred = np.where(Y_pred > 0.5, 1, 0)
+    y_pred = np.ndarray.flatten(y_pred)
+
+    disp1 = ConfusionMatrixDisplay.from_predictions(ground_truth, y_pred, display_labels=['No Polyp', 'Polyp'],
+                                                    values_format='')
+    plt.title(model_name + " Confusion Matrix")
+    disp1.plot()
+    plt.show()
+
+    print(classification_report(ground_truth, y_pred, target_names=['No Polyp', 'Polyp']))
+

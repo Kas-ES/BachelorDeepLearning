@@ -54,19 +54,6 @@ def readAndsaveGroundTruth(amount, dataframe):
     return array
 
 
-def confusionMatrixAndClasificaitonReport(Y_pred, ground_truth, model_name):
-    y_pred = np.where(Y_pred > 0.5, 1, 0)
-    y_pred = np.ndarray.flatten(y_pred)
-
-    disp1 = ConfusionMatrixDisplay.from_predictions(ground_truth, y_pred, display_labels=['No Polyp', 'Polyp'],
-                                                    values_format='')
-    plt.title(model_name + " Confusion Matrix")
-    disp1.plot()
-    plt.show()
-
-    print(classification_report(ground_truth, y_pred, target_names=['No Polyp', 'Polyp']))
-
-
 batchSIZE = 1
 
 timeInferences = []
