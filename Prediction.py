@@ -91,7 +91,7 @@ ground_truthTest1D = np.ndarray.flatten(ground_truthTest)
 '''All predicitons'''
 labels = ['VGG19', 'ResNeXt50', 'ResNet50', 'InceptionV3', 'InceptionResnetV2', 'EU-Net', 'U-Net++', 'U-Net+++',
           'U-Net', 'EU-Net VGG19 5-4-1', 'EU-Net VGG19 5-3-2']
-model_prediction("All")
+#model_prediction("All")
 
 '''EUNET predicitons'''
 # labels = ['EU-Net 5-5-5','EU-Net 5-5-4', 'EU-Net 5-4-4', 'EU-Net 5-5-3',
@@ -101,7 +101,23 @@ model_prediction("All")
 
 
 '''Image Visualization'''
+
+def imageProcess (type):
+    if (type == "EUnets"):
+        neural_networks = LoadModels.EUnets
+    elif (type == "All"):
+        neural_networks = LoadModels.AllNueralNetworks
+
+    for i in range(len(neural_networks)):
+        model = LoadModels.load_model(neural_networks[i], type)
+        Plotting.imageVisualiaziton(model, df_test, labels[i], IMG_HEIGHT, IMG_WIDTH)
+
+
+imageProcess("All")
+
 # Plotting.imageVisualiaziton(VGG19,df_test, labels[0], IMG_HEIGHT, IMG_WIDTH)
+#
+#
 # Plotting.imageVisualiaziton(ResNextUnet,df_test, labels[1], IMG_HEIGHT, IMG_WIDTH)
 # Plotting.imageVisualiaziton(Resnet,df_test, labels[2], IMG_HEIGHT, IMG_WIDTH)
 # Plotting.imageVisualiaziton(InceptionV3,df_test, labels[3], IMG_HEIGHT, IMG_WIDTH)
@@ -114,7 +130,7 @@ model_prediction("All")
 # Plotting.imageVisualiaziton(EUnetVGG19_3_2,df_test, labels[10], IMG_HEIGHT, IMG_WIDTH)
 
 '''Draw Precision Recall Curves'''
-Plotting.precision_recall_curve_models(predictions, ground_truthTest1D, labels, colors)
+#Plotting.precision_recall_curve_models(predictions, ground_truthTest1D, labels, colors)
 
 '''Scores'''
 f1Scores = ScoreCalculation.f1scores_append(ground_truthTest1D, predictions)
@@ -133,4 +149,4 @@ print('IoU')
 print(iou)
 
 '''Draw Circles'''
-Plotting.drawCircles(f1Scores, timeInferences, labels, colors)
+#Plotting.drawCircles(f1Scores, timeInferences, labels, colors)
